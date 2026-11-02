@@ -12,8 +12,8 @@ import type { Sfx } from './sound'
 const PANE = 'minyam'
 const hideEmail = atom({ plugin: 'minyam', key: 'hideEmail' } as const, false)
 const hideZone = atom({ plugin: 'minyam', key: 'hideZone' } as const, false)
-const sfxOn = atom({ plugin: 'minyam', key: 'sfxOn' } as const, false)
-const musicOn = atom({ plugin: 'minyam', key: 'musicOn' } as const, false)
+const sfxOn = atom({ plugin: 'minyam', key: 'sfxOn' } as const, true)
+const musicOn = atom({ plugin: 'minyam', key: 'musicOn' } as const, true)
 const isShown = atom({ plugin: 'minyam', key: 'isShown' } as const, true)
 const say = atom({ plugin: 'minyam', key: 'say' } as const, 'Halo, aku Minyam. Aku jaga status di sini.')
 const isDocked = atom({ plugin: 'minyam', key: 'isDocked' } as const, false)

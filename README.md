@@ -71,22 +71,24 @@ Ketik perintah ini di Claude Code:
 | `/minyam show-email` | Tampilkan email lagi |
 | `/minyam hide-folder` | Sembunyikan nama folder (tampil `******`) |
 | `/minyam show-folder` | Tampilkan nama folder lagi |
-| `/minyam sfx on` / `/minyam sfx off` | Nyalakan atau matikan efek suara |
-| `/minyam musik on` / `/minyam musik off` | Nyalakan atau matikan musik petualangan |
+| `/minyam sfx off` / `/minyam sfx on` | Matikan atau nyalakan efek suara |
+| `/minyam musik off` / `/minyam musik on` | Matikan atau nyalakan musik petualangan |
 | `/minyam suara cek` | Bunyikan satu suara dan cek apakah komputermu bisa memutar suara |
 
 Mau screenshot layar? Jalankan `hide-email` dan `hide-folder` dulu supaya data pribadimu tidak ikut terlihat.
 
-## Suara (awalnya mati)
+## Suara (awalnya menyala)
 
-Minyam punya efek suara (setiap tebasan, jurus, ultimate, monster kalah, hewan bantuan datang, tugas selesai) dan musik petualangan. **Dua-duanya mati** sampai kamu menyalakannya:
+Minyam punya efek suara (setiap tebasan, jurus, ultimate, monster kalah, hewan bantuan datang, tugas selesai) dan musik petualangan. **Dua-duanya menyala dari awal.** Kalau mau mematikan:
 
 ```
-/minyam sfx on
-/minyam musik on
+/minyam sfx off
+/minyam musik off
 ```
 
-Suaranya diputar dengan pemutar yang sudah ada di komputermu. Setelah menyalakan, ketik `/minyam suara cek`. Kalau ada bunyi, berarti beres.
+Pilihanmu tersimpan, jadi tidak perlu diulang.
+
+Suaranya diputar dengan pemutar yang sudah ada di komputermu. Ketik `/minyam suara cek` untuk mengetes. Kalau ada bunyi, berarti beres. Kalau tidak ada bunyi sama sekali, lihat tabel di bawah.
 
 | Komputer | Perlu dipasang? |
 | --- | --- |
@@ -94,7 +96,7 @@ Suaranya diputar dengan pemutar yang sudah ada di komputermu. Setelah menyalakan
 | **Mac** | Tidak. Memakai `afplay` bawaan. |
 | **Linux** | Perlu satu pemutar. Pasang salah satu: `sudo apt install pulseaudio-utils`, atau `sudo apt install alsa-utils`, atau `sudo apt install ffmpeg`. Distro lain: pasang paket yang berisi `paplay`, `aplay`, atau `ffplay`. |
 
-Kalau `/minyam suara cek` bilang belum ada pemutar, ikuti petunjuk yang muncul di pesannya.
+Di Linux tanpa pemutar, Minyam diam saja sampai kamu memasangnya. Kalau `/minyam suara cek` bilang belum ada pemutar, ikuti petunjuk yang muncul di pesannya.
 
 Catatan: saat suara menyala, Minyam menjalankan program pemutar di komputermu (PowerShell di Windows). Di Windows, Minyam juga membuat satu file kecil di folder sementara (`minyam-sfx-...txt`) sebagai pemicu suara. Musik berjalan sebagai satu proses kecil di latar dan berhenti saat kamu mengetik `/minyam musik off`.
 
