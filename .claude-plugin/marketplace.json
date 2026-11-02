@@ -1,0 +1,11 @@
+{
+  "name": "artosku-mods",
+  "owner": { "name": "Artosku" },
+  "plugins": [
+    {
+      "name": "minyam",
+      "source": "./",
+      "description": "Minyam the chicken as a game-style HUD for Claude Code."
+    }
+  ]
+}
