@@ -55,6 +55,7 @@ Mau kembali ke tampilan biasa? Ketik `/tui default`.
   - Di bawah tiap bar tertulis berapa persen yang sudah terpakai.
 - **Gelembung ucapan:** tulisan apa yang sedang dikerjakan Claude, atau "Lagi diem".
 - **Pertarungan:** saat Claude bekerja, Minyam berjalan, ketemu monster, lalu menebasnya. Makin lama Claude bekerja, makin besar monsternya dan makin banyak jurus Minyam. Satu monster kalah setiap satu tugas selesai.
+- **Mode GitHub:** kalau Claude menjalankan `git push`, `git pull`, `git fetch`, `git clone`, `git merge`, atau perintah `gh` (PR, issue, dan sebagainya), monsternya berganti jadi gurita yang bentuknya beda di tiap tahap (Anak Gurita yang imut, Gurita Kode berwarna biru dengan antena, Gurita Raksasa berduri dan bertaring, Kraken Merge merah dengan mahkota dan simbol merge) dan Minyam menembak dengan pistol, lengkap dengan suara tembakan. Setelah monster itu kalah, adegan kembali normal.
 - **Teman bantuan:** kalau Claude memanggil asisten (sub agent), muncul hewan kecil yang ikut menyerang. Haiku = burung hijau, Sonnet = burung hantu biru, Opus = naga ungu. Hewannya pergi saat asistennya selesai.
 - **Deretan alat:** menunjukkan alat apa saja yang dipakai Claude, misalnya `2x Bash`.
 - **Info sesi:** model yang dipakai, nama folder, akun, cabang git, lama sesi, biaya, dan jumlah pesan.

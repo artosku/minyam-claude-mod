@@ -109,7 +109,7 @@ async function tickAtom($: any, checkPets: boolean) {
     sound = null
     if (s.fx && s.fx.t === 0) sound = s.fx.name === 'ulti' ? 'ultimate' : s.fx.name
     else if (s.st === 'die' && stBefore !== 'die') sound = 'defeat'
-    else if (s.flash && s.st === 'fight' && !s.fx) sound = s.pose === 'swing' ? 'slash' : 'hit'
+    else if (s.flash && s.st === 'fight' && !s.fx) sound = s.pose === 'swing' ? (s.gh ? 'shot' : 'slash') : 'hit'
     return gone || moved ? JSON.stringify(s) : raw
   })
   if (sound && (await read($, sfxOn))) void sfxPlay($, sound)
@@ -119,6 +119,10 @@ async function tickAtom($: any, checkPets: boolean) {
 async function ensureTune($: any) {
   if ((await read($, musicOn)) && !tuneRunning()) await tuneStart($)
 }
+
+// A GitHub task: git push, pull, fetch, clone, merge, or the gh tool. Another monster, and Minyam shoots.
+const isGithubCommand = (cmd: string) =>
+  /\bgit(\s+-\S+(\s+\S+)?)*\s+(push|pull|fetch|clone|merge)\b/.test(cmd) || /\bgh\s+(pr|issue|repo|release|run|api|workflow|auth)\b/.test(cmd)
 
 // A sub agent starts: its pet appears by the model it runs on.
 const kindOf = (model: unknown): PetKind => {
@@ -314,6 +318,7 @@ export const register: Register = on => {
   })
 
   on('tool.call', async ($, e, next) => {
+    if (e.tool === 'Bash' && isGithubCommand(String((e as any).command ?? ''))) await mutateScene($, s => { s.gh = true })
     tools += 1
     await speak($, doing(e))
     const slot = gearOf(String(e.tool))
@@ -427,9 +432,9 @@ export const register: Register = on => {
         <Box marginTop={1}>{rule}</Box>
         <Box flexDirection="column" marginTop={1}>
           <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={full}>
-            <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text></Text>
+            <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
             {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
-            {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft))} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx) : ''}</Text> : null}
+            {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text> : null}
             <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
           </Box>
           <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{'      ▼'}</Text>

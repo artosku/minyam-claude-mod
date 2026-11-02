@@ -2,7 +2,7 @@
 // It plays the wav files of the sounds folder with what the computer already has:
 // Windows: PowerShell (System.Media.SoundPlayer). macOS: afplay. Linux: paplay, aplay or ffplay.
 
-export type Sfx = 'slash' | 'hit' | 'cross' | 'wave' | 'finish' | 'ultimate' | 'defeat' | 'pet' | 'done'
+export type Sfx = 'shot' | 'slash' | 'hit' | 'cross' | 'wave' | 'finish' | 'ultimate' | 'defeat' | 'pet' | 'done'
 
 type Kind = 'win' | 'mac' | 'linux'
 
@@ -74,7 +74,7 @@ export async function soundHelp($: any): Promise<string> {
 
 // Windows: one PowerShell stays alive and plays a sound the moment the trigger file changes, so a
 // fast fight does not start a new process for every blow. Elsewhere the players start at once.
-const NAMES = ['slash', 'hit', 'cross', 'wave', 'finish', 'ultimate', 'defeat', 'pet', 'done']
+const NAMES = ['shot', 'slash', 'hit', 'cross', 'wave', 'finish', 'ultimate', 'defeat', 'pet', 'done']
 
 async function daemonStart($: any): Promise<boolean> {
   if (daemon) return true

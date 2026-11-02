@@ -22,6 +22,7 @@ export type Scene = {
   finishing: boolean // the last blow is on its way
   hp: number // 0..1, what the bar over the enemy shows
   pets: Pet[] // helpers that appear while a sub agent works
+  gh: boolean // a GitHub task (push, pull, gh ...): other monster, and Minyam shoots
 }
 
 export type PetKind = 'haiku' | 'sonnet' | 'opus'
@@ -29,7 +30,7 @@ export type Pet = { id: string; k: PetKind; t: number }
 
 export const newScene = (): Scene => ({
   st: 'idle', t: 0, ex: null, kills: 0, pending: 0, scroll: 0, step: 0,
-  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [],
+  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [], gh: false,
 })
 
 const PH = 26 // pixel rows: 13 cell rows
@@ -95,12 +96,21 @@ const MON = [
   { w: 18, h: 13, c: '#9b59b6', d: '#5e3370', hi: '#c792ea', horn: 3, name: 'Ogre' },
   { w: 22, h: 16, c: '#e04a3a', d: '#8c2418', hi: '#ff8f7a', horn: 4, name: 'Naga' },
 ]
-export const monsterName = (stage: number) => MON[Math.max(0, Math.min(3, stage))].name
+const OCTO_NAMES = ['Anak Gurita', 'Gurita Kode', 'Gurita Raksasa', 'Kraken Merge']
+export const monsterName = (stage: number, gh = false) => (gh ? OCTO_NAMES : MON.map(m => m.name))[Math.max(0, Math.min(3, stage))]
 export const stageOf = (ft: number) => (ft >= 90 ? 3 : ft >= 36 ? 2 : ft >= 14 ? 1 : 0)
 export const enemyWidth = (stage: number) => MON[stage].w
 export const fightX = (w: number) => Math.max(14, Math.min(19, w - 24))
-export const fxLabel = (fx: Fx | null) =>
-  fx == null ? '' : fx.name === 'cross' ? 'Tebasan Silang' : fx.name === 'wave' ? 'Gelombang Angin' : fx.name === 'finish' ? 'Tebasan Akhir' : 'ULTIMATE: Meteor Emas'
+export const fxLabel = (fx: Fx | null, gh = false) =>
+  fx == null
+    ? ''
+    : fx.name === 'cross'
+      ? gh ? 'Tembakan Silang' : 'Tebasan Silang'
+      : fx.name === 'wave'
+        ? gh ? 'Peluru Angin' : 'Gelombang Angin'
+        : fx.name === 'finish'
+          ? gh ? 'Tembakan Akhir' : 'Tebasan Akhir'
+          : 'ULTIMATE: Meteor Emas'
 
 const FX_LEN = { cross: 2, wave: 3, finish: 2, ulti: 4 }
 
@@ -124,7 +134,7 @@ export function tickScene(sc: Scene, working: boolean, w: number): boolean {
   sc.step += 1
   sc.flash = false
   for (const p of sc.pets ?? []) p.t += 1
-  const spawn = () => { sc.ex = w - MON[0].w; sc.ft = 0; sc.combo = 0; sc.fx = null; sc.pose = 'stance'; sc.finishing = false; sc.hp = 1 }
+  const spawn = () => { sc.ex = w - MON[0].w; sc.ft = 0; sc.combo = 0; sc.fx = null; sc.pose = 'stance'; sc.finishing = false; sc.hp = 1; sc.gh = false }
   const after = () => {
     sc.ex = null
     sc.t = 0
@@ -189,6 +199,101 @@ export function tickScene(sc: Scene, working: boolean, w: number): boolean {
       break
   }
   return JSON.stringify(sc) !== before
+}
+
+// The GitHub monsters, each its own design: a cute baby, a terminal octopus with an antenna,
+// a spiked ogre-octopus with fangs and a Kraken that wears the merge symbol and a crown.
+const OCTO = [
+  { c: '#b9a3ff', d: '#6d57b8', hi: '#efe9ff', eye: '#ffffff' },
+  { c: '#2cc4d6', d: '#16727f', hi: '#b4f4fb', eye: '#7cff9a' },
+  { c: '#4b3f9e', d: '#251d5a', hi: '#9a8cf0', eye: '#ff5a5a' },
+  { c: '#c2255c', d: '#4a0b25', hi: '#ff94b0', eye: '#ffe14d' },
+]
+
+function drawOcto(buf: Buf, x: number, y: number, stage: number, tint: string | null, step: number) {
+  const m = MON[stage]
+  const o = OCTO[stage]
+  const col = (c: string) => tint ?? c
+  const headH = Math.round(m.h * 0.62)
+  const cx = x + Math.floor(m.w / 2)
+
+  // the head
+  for (let j = 0; j < headH; j++) {
+    for (let i = 0; i < m.w; i++) {
+      const nx = (i + 0.5 - m.w / 2) / (m.w / 2)
+      const ny = (j + 0.5 - headH) / headH
+      if (nx * nx + ny * ny > 1) continue
+      put(buf, x + i, y + j, col(nx > 0.7 || j >= headH - 1 ? o.d : nx < -0.3 && ny < -0.5 ? o.hi : o.c))
+    }
+  }
+
+  // the tentacles: few and small, then many with suckers, then thick and long
+  const gap = stage === 0 ? 3 : stage === 3 ? 4 : 2
+  const tw = stage === 3 ? 2 : 1
+  for (let i = 1; i < m.w - tw + 1; i += gap) {
+    for (let j = headH - 1; j < m.h; j++) {
+      const amp = stage === 3 ? 0.5 : 0.35
+      const sway = Math.round(Math.sin((step + i + j) * 0.9) * (j - headH + 2) * amp)
+      for (let t = 0; t < tw; t++) put(buf, x + i + t + sway, y + j, col(j >= m.h - 2 ? o.d : o.c))
+      if (stage === 2 && j > headH && (j - headH) % 2 === 0) put(buf, x + i + sway, y + j, col(o.hi))
+    }
+  }
+
+  const eyeXs = [x + Math.round(m.w * 0.2), x + Math.round(m.w * 0.58)]
+  const eyeY = y + Math.round(headH * 0.4)
+
+  if (stage === 0) {
+    // big wet eyes and a blush: harmless
+    for (const xe of eyeXs) {
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 2; i++) put(buf, xe + i, eyeY + j, col(o.eye))
+      put(buf, xe + 1, eyeY + 1, col('#2d1b12'))
+      put(buf, xe + 1, eyeY + 2, col('#2d1b12'))
+    }
+    put(buf, x + 1, eyeY + 4, col('#ff9ec7'))
+    put(buf, x + m.w - 3, eyeY + 4, col('#ff9ec7'))
+  } else if (stage === 1) {
+    // an antenna with a blinking tip, square terminal eyes and < > on the forehead
+    for (let j = 1; j <= 3; j++) put(buf, cx, y - j + 1, col(o.d))
+    put(buf, cx, y - 3, col(step % 4 < 2 ? '#ffe14d' : '#ff9d2e'))
+    for (const xe of eyeXs) {
+      for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) put(buf, xe + i, eyeY + j, col(o.eye))
+    }
+    for (const [dx, dy] of [[-3, 0], [-4, 1], [-3, 2]]) put(buf, cx + dx, y + 1 + dy, col(o.d))
+    for (const [dx, dy] of [[3, 0], [4, 1], [3, 2]]) put(buf, cx + dx, y + 1 + dy, col(o.d))
+    for (let i = 0; i < 4; i++) put(buf, cx - 2 + i, y + headH - 2, col(o.d))
+  } else if (stage === 2) {
+    // spikes, red angry eyes with brows, and fangs
+    for (let i = 2; i < m.w - 2; i += 3) {
+      put(buf, x + i, y - 1, col('#ffb347'))
+      put(buf, x + i, y, col('#ffb347'))
+      put(buf, x + i + 1, y, col('#e8891d'))
+    }
+    for (let k = 0; k < eyeXs.length; k++) {
+      const xe = eyeXs[k]
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) put(buf, xe + i, eyeY + j, col(o.eye))
+      put(buf, xe + 1, eyeY + 1, col('#2d1b12'))
+      for (let i = 0; i < 4; i++) put(buf, xe - 1 + i, eyeY - 1 - (k === 0 ? (i < 2 ? 1 : 0) : (i > 1 ? 1 : 0)), col(o.d))
+    }
+    const my = y + headH - 3
+    for (let i = 0; i < 6; i++) put(buf, cx - 3 + i, my, col('#2d1b12'))
+    for (const dx of [-3, 2]) { put(buf, cx + dx, my + 1, col('#ffffff')); put(buf, cx + dx, my + 2, col('#ffffff')) }
+  } else {
+    // the Kraken: a golden crown of horns, glowing slit eyes, the merge symbol and sparks
+    for (const hx of [x + 3, cx - 1, x + m.w - 5]) {
+      for (let r = 0; r < 5; r++) for (let i = 0; i <= (r < 2 ? 1 : 0); i++) put(buf, hx + i, y - 1 - r, col(r > 2 ? '#fff0a8' : '#ffe14d'))
+    }
+    for (const xe of eyeXs) {
+      for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) put(buf, xe + i, eyeY + j, col(o.eye))
+      for (let j = 0; j < 3; j++) put(buf, xe + 1, eyeY + j, col('#2d1b12'))
+    }
+    // merge symbol: two branches meeting in one
+    const gy = y + Math.round(headH * 0.62)
+    for (const [dx, dy] of [[-4, 0], [-3, 1], [-2, 2], [4, 0], [3, 1], [2, 2], [-1, 3], [0, 3], [1, 3], [0, 4]]) put(buf, cx + dx, gy + dy, col('#ffe14d'))
+    for (const [dx, dy] of [[-4, -1], [4, -1], [0, 5]]) put(buf, cx + dx, gy + dy, col('#ffffff'))
+    // sparks around it
+    const sp = [[-2, -3], [m.w, 2], [-3, 6], [m.w + 1, 8], [m.w - 3, -4]]
+    for (let k = 0; k < sp.length; k++) if ((step + k) % 3 === 0) put(buf, x + sp[k][0], y + sp[k][1], col('#ffe14d'))
+  }
 }
 
 function drawMonster(buf: Buf, x: number, y: number, stage: number, tint: string | null) {
@@ -283,7 +388,8 @@ export function renderScene(w: number, sc: Scene): Cells {
         for (const [dx, dy] of [[-3, 2], [3, 1]]) put(buf, cx + dx, GROUND - 5 + dy - lift, '#ffffff')
       }
     } else {
-      drawMonster(buf, ex0 + shake, ey, stage, hit || ulti ? '#ffffff' : null)
+      if (sc.gh) drawOcto(buf, ex0 + shake, ey, stage, hit || ulti ? '#ffffff' : null, sc.step)
+      else drawMonster(buf, ex0 + shake, ey, stage, hit || ulti ? '#ffffff' : null)
       if (fighting) {
         // its life bar
         const by = ey - m.horn - 3
@@ -298,7 +404,24 @@ export function renderScene(w: number, sc: Scene): Cells {
   sprite(buf, [feet], bx, OY + 13)
 
   // the sword: sheathed when idle, up in stance and windup, flat when it swings
-  if (fighting || sc.st === 'die') {
+  if ((fighting || sc.st === 'die') && sc.gh) {
+    // the pistol: held up a little at windup, a muzzle flash and a bullet at the shot
+    const up = sc.pose === 'windup' ? -1 : 0
+    const gy = OY + 7 + up
+    for (let x = 15; x <= 22; x++) {
+      put(buf, bx + x, gy - 1, '#7b8394')
+      put(buf, bx + x, gy, '#3b4252')
+    }
+    put(buf, bx + 15, gy + 1, '#6b4a2f')
+    put(buf, bx + 16, gy + 1, '#6b4a2f')
+    put(buf, bx + 15, gy + 2, '#6b4a2f')
+    put(buf, bx + 16, gy + 2, '#6b4a2f')
+    put(buf, bx + 17, gy + 1, '#3b4252')
+    if (sc.pose === 'swing' && sc.st === 'fight' && sc.ex != null) {
+      for (const [dx, dy] of [[23, 0], [24, 0], [25, 0], [24, -1], [24, 1], [23, -1], [23, 1]]) put(buf, bx + dx, gy + dy, dx === 24 && dy === 0 ? '#ffffff' : '#ffd02e')
+      for (let x = bx + 27; x < sc.ex + 2; x += 2) put(buf, x, gy, '#fff2a0')
+    }
+  } else if (fighting || sc.st === 'die') {
     if (sc.pose !== 'swing' && sc.st !== 'die') {
       for (let y = 0; y <= 6; y++) put(buf, bx + 14, OY + bob + y, y === 0 ? '#ffffff' : '#dfe6ee')
       for (const x of [13, 14, 15]) put(buf, bx + x, OY + bob + 7, '#ffd02e')
