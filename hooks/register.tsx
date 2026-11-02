@@ -234,9 +234,9 @@ async function gather($: any): Promise<void> {
 }
 
 // The side pane when the terminal docks one, else the small band above the prompt.
-// Theater is the default: tall where the pane sits above the prompt (full width there), the usual 54 columns where it docks.
+// Theater is the default: tall and as wide as the engine allows (docked it is capped at 45% of the terminal, inline it is full width); small is 54 columns.
 async function show($: any, tall = true) {
-  const opened = await $.ui.open({ id: PANE, title: 'Minyam', columns: 54, rows: tall ? 60 : 28 })
+  const opened = await $.ui.open({ id: PANE, title: 'Minyam', columns: tall ? 120 : 54, rows: tall ? 60 : 28 })
   await update($, isDocked, () => Boolean(opened.isPlaced))
 }
 
@@ -477,7 +477,7 @@ export const register: Register = on => {
 
     const bars = i && (
       <Box flexDirection={three ? 'row' : 'column'} marginTop={1}>
-        {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}${i.compactAt != null ? ` - compact di ${i.compactAt}%` : ''}`, i.compactAt != null ? 100 - i.compactAt : null)}
+        {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}${i.compactAt != null ? ` - auto compact di ${i.compactAt}%` : ''}`, i.compactAt != null ? 100 - i.compactAt : null)}
         {stat('MP', '#5aa9ff', i.five, i.fiveIn != null ? `5 jam: ${i.fiveIn}m` : '5 jam')}
         {stat('SP', '#ff9f43', i.seven, 'batas mingguan')}
       </Box>

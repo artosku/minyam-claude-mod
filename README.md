@@ -49,7 +49,7 @@ Mau kembali ke tampilan biasa? Ketik `/tui default`.
 ## Apa saja yang kamu lihat
 
 - **Tiga bar (di atas, atau di kanan pada mode teater yang lebar):** sisa tenaga, seperti di game. Di mode teater, panggung ada di kiri, bar HP/MP/SP dan lembar status ada di kanan, dan keterangan tiap bar jadi satu baris.
-  - **HP** = sisa ruang percakapan (konteks). Bagian bar di kiri tanda `┃` berwarna putih seperti perisai: ruang itu tidak akan terpakai karena Claude Code meringkas percakapan otomatis (auto-compact) sebelum sampai ke sana. Bagian hijau di kanan `┃` adalah yang masih bisa dipakai, dan tulisan `compact di N%` menyebut di persen berapa itu terjadi. Kalau auto-compact mati, tandanya tidak muncul.
+  - **HP** = sisa ruang percakapan (konteks). Bagian bar di kiri tanda `┃` berwarna putih seperti perisai: ruang itu tidak akan terpakai karena Claude Code meringkas percakapan otomatis (auto-compact) sebelum sampai ke sana. Bagian hijau di kanan `┃` adalah yang masih bisa dipakai, dan tulisan `auto compact di N%` menyebut di persen berapa itu terjadi. Kalau auto-compact mati, tandanya tidak muncul.
   - **MP** = sisa jatah 5 jam.
   - **SP** = sisa jatah seminggu.
   - Di bawah tiap bar tertulis berapa persen yang sudah terpakai.
