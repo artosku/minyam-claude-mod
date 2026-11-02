@@ -135,7 +135,7 @@ const kindOf = (model: unknown): PetKind => {
 type Info = {
   model: string; effort: string; dir: string; email: string
   branch: string; git: string; sync: string; commit: string
-  minutes: number; ctxTokens: number; ctxWindow: number; ctxPct: number
+  minutes: number; ctxTokens: number; ctxWindow: number; ctxPct: number; compactAt: number | null
   five: number | null; fiveIn: number | null; seven: number | null; cost: number | null; turns: number
 }
 
@@ -173,7 +173,7 @@ async function gather($: any): Promise<void> {
   const home: string = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) ?? ''
   const out: Info = {
     model: '', effort: '', dir: cwd.split(/[\\/]/).filter(Boolean).pop() ?? '', email: '',
-    branch: '', git: '', sync: '', commit: '', minutes: 0, ctxTokens: 0, ctxWindow: 0, ctxPct: 0,
+    branch: '', git: '', sync: '', commit: '', minutes: 0, ctxTokens: 0, ctxWindow: 0, ctxPct: 0, compactAt: null,
     five: null, fiveIn: null, seven: null, cost: null, turns: 0,
   }
   try { out.model = await $.session.model() } catch {}
@@ -223,6 +223,12 @@ async function gather($: any): Promise<void> {
       if (r.kind === 'seven_day') out.seven = Math.round(r.percentUsed)
     }
     out.cost = u.cost?.usd ?? null
+  } catch {}
+  // where auto-compact will run, as a percent of the window (null when it is off)
+  try {
+    const b = (await $.session.usage({ breakdown: 'summary' })).context.breakdown
+    const at = b?.isAutoCompactEnabled ? b.autoCompactThreshold : undefined
+    if (at != null && out.ctxWindow > 0) out.compactAt = Math.max(1, Math.min(99, Math.round((at / out.ctxWindow) * 100)))
   } catch {}
   await update($, info, () => JSON.stringify(out))
 }
@@ -426,17 +432,30 @@ export const register: Register = on => {
     const colW = theater ? RW : three ? Math.floor(cols / 3) : cols
     const segs = Math.max(6, colW - 4)
     // segmented, so it reads like a game gauge and not like a slab
-    const seg = (n: number) => {
+    // mark: where auto-compact runs. Left of it is the reserve that can never be used (shown white, like a
+    // shield); right of it is the part that can still be used, drawn in the gauge colour.
+    const seg = (n: number, mark?: number | null) => {
       const lit = Math.round((Math.max(0, Math.min(100, n)) / 100) * segs)
-      return '▰'.repeat(lit) + '▱'.repeat(segs - lit)
+      if (mark == null) return { l: '', m: '', r: '▰'.repeat(lit) + '▱'.repeat(segs - lit) }
+      const at = Math.max(0, Math.min(segs - 1, Math.round((mark / 100) * segs)))
+      return { l: '▰'.repeat(at), m: '┃', r: '▰'.repeat(Math.max(0, lit - at - 1)) + '▱'.repeat(Math.max(0, segs - Math.max(lit, at + 1))) }
     }
-    const stat = (tag: string, base: string, used: number | null, caption: string) => {
+    const stat = (tag: string, base: string, used: number | null, caption: string, mark?: number | null) => {
       const rem = used == null ? null : Math.max(0, Math.min(100, 100 - used))
       const c = rem == null ? '#5c6370' : tone(rem, base)
       return (
         <Box flexDirection="column" width={colW} paddingRight={1}>
           <Text wrap="truncate-end"><Text bold color={base}>{tag}</Text><Text bold> {rem == null ? '--' : `sisa ${rem}%`}</Text></Text>
-          <Text color={c} wrap="truncate-end">{seg(rem ?? 0)}</Text>
+          {(() => {
+            const g = seg(rem ?? 0, mark)
+            return (
+              <Text wrap="truncate-end">
+                <Text color="#e6e6e6">{g.l}</Text>
+                <Text color="#ffffff" bold>{g.m}</Text>
+                <Text color={c}>{g.r}</Text>
+              </Text>
+            )
+          })()}
           {theater ? (
             <Text wrap="truncate-end" color="#8a919e">{caption} - {used == null ? '-' : `terpakai ${Math.round(used)}%`}</Text>
           ) : (
@@ -458,7 +477,7 @@ export const register: Register = on => {
 
     const bars = i && (
       <Box flexDirection={three ? 'row' : 'column'} marginTop={1}>
-        {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}`)}
+        {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}${i.compactAt != null ? ` - compact di ${i.compactAt}%` : ''}`, i.compactAt != null ? 100 - i.compactAt : null)}
         {stat('MP', '#5aa9ff', i.five, i.fiveIn != null ? `5 jam: ${i.fiveIn}m` : '5 jam')}
         {stat('SP', '#ff9f43', i.seven, 'batas mingguan')}
       </Box>
