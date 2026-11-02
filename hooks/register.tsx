@@ -502,6 +502,22 @@ export const register: Register = on => {
   // What is typed in the pane goes to the session as a prompt, like the one below.
   on('ui.message', { requestId: PANE }, async ($, e, next) => {
     const text = String((e.data as any)?.text ?? '').trim()
+    // a slash command: run it as if it was typed; where that is refused, put it in the main box instead
+    if (e.element === 'chat' && text.startsWith('/')) {
+      const [word, ...rest] = text.slice(1).split(/\s+/)
+      let msg = ''
+      try {
+        const out: any = await $.command.run({ command: word, args: rest.join(' ') })
+        const said = String(out?.text ?? '').trim()
+        msg = said !== '' ? said : `/${word} dijalankan.`
+      } catch {
+        const filled = await $.prompt.fill({ text, mode: 'replace' })
+        msg = filled?.isFilled === false ? `/${word} tidak bisa dijalankan dari sini, ketik di kotak utama.` : `/${word} belum bisa dijalankan dari sini, sudah diisi ke kotak utama: tekan Enter di sana.`
+      }
+      await speak($, short(msg, 120))
+      void $.ui.toast(short(msg, 120))
+      return next(e)
+    }
     if (e.element === 'chat' && text !== '') {
       startedAt = await $.clock.now()
       tools = 0

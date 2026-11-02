@@ -59,7 +59,7 @@ Mau kembali ke tampilan biasa? Ketik `/tui default`.
 - **Teman bantuan:** kalau Claude memanggil asisten (sub agent), muncul hewan kecil yang ikut menyerang. Haiku = burung hijau, Sonnet = burung hantu biru, Opus = naga ungu. Hewannya pergi saat asistennya selesai.
 - **Deretan alat:** menunjukkan alat apa saja yang dipakai Claude, misalnya `2x Bash`.
 - **Info sesi:** model yang dipakai, nama folder, akun, cabang git, lama sesi, biaya, dan jumlah pesan.
-- **Kotak ketik di bawah:** klik kotaknya, ketik pesan, lalu tekan Enter. Pesannya terkirim ke Claude seperti biasa. Untuk perintah `/` atau melampirkan file, tetap pakai kotak ketik utama Claude Code.
+- **Kotak ketik di bawah:** klik kotaknya, ketik pesan, lalu tekan Enter. Pesannya terkirim ke Claude seperti biasa. Perintah `/` yang kamu ketik di sini langsung dijalankan. Kalau ada perintah yang menolak dijalankan dari sini, teksnya dipindahkan ke kotak ketik utama dan kamu tinggal menekan Enter di sana. Melampirkan file (`@`) tetap lewat kotak utama.
 
 ## Perintah
 
