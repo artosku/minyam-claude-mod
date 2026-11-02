@@ -228,8 +228,9 @@ async function gather($: any): Promise<void> {
 }
 
 // The side pane when the terminal docks one, else the small band above the prompt.
-async function show($: any) {
-  const opened = await $.ui.open({ id: PANE, title: 'Minyam', columns: 54, rows: 28 })
+// Theater is the default: tall where the pane sits above the prompt (full width there), the usual 54 columns where it docks.
+async function show($: any, tall = true) {
+  const opened = await $.ui.open({ id: PANE, title: 'Minyam', columns: 54, rows: tall ? 60 : 28 })
   await update($, isDocked, () => Boolean(opened.isPlaced))
 }
 
@@ -262,7 +263,7 @@ export const register: Register = on => {
     await $.command.register({
       name: 'minyam',
       description: 'Show or hide Minyam, the chicken that tells the status',
-      argumentHint: 'on | off | sfx on|off | musik on|off | hide-email | show-email | hide-folder | show-folder',
+      argumentHint: 'on | off | kecil | sfx on|off | musik on|off | hide-email | show-email | hide-folder | show-folder',
     })
     if (await read($, isShown)) void show($)
     void ensureTune($)
@@ -309,10 +310,11 @@ export const register: Register = on => {
       await update($, hideZone, () => nextHide)
       return { text: nextHide ? 'Nama folder disembunyikan.' : 'Nama folder ditampilkan lagi.' }
     }
-    const next = arg === 'on' ? true : arg === 'off' ? false : !now
+    const small = arg === 'kecil' || arg === 'small'
+    const next = arg === 'on' || arg === 'teater' || arg === 'theater' || small ? true : arg === 'off' ? false : !now
     await update($, isShown, () => next)
     if (next) {
-      await show($)
+      await show($, !small)
       await speak($, 'Aku di sini lagi.')
     } else {
       await $.ui.close({ id: PANE })
@@ -380,9 +382,14 @@ export const register: Register = on => {
     // the content keeps to 54 columns however wide the pane is
     // as wide as the canvas when it is widened; the usual 54 at the default width
     const have: number = props.bodyColumns ?? 40
-    const cols: number = have > 60 ? Math.min(have, 140) : Math.min(have, 54)
+    const cols: number = have > 60 ? Math.min(have, 400) : Math.min(have, 54)
     const rows = props.placement === 'inline' ? (props.scroll?.bodyRows ?? 20) + 4 : (e.viewport?.rows ?? 40)
-    sceneW = Math.max(32, cols)
+    const docked = await read($, isDocked)
+    // theater: wide and inline -> the scene on the left, HP/MP/SP and the sheet on the right
+    const theater = cols >= 80
+    const lw = theater ? Math.max(48, Math.round(cols * 0.6)) : cols
+    const RW = theater ? Math.max(30, Math.min(cols - lw - 2, 70)) : 38
+    sceneW = Math.max(32, lw)
     if ((await read($, stageW)) !== sceneW) void update($, stageW, () => sceneW)
     const sceneRaw = await read($, sceneAtom)
     const shown: Scene = parseScene(sceneRaw)
@@ -414,9 +421,9 @@ export const register: Register = on => {
 
     // a game bar: full is good, it empties as the figure is used up
     const tone = (rem: number, base: string) => (rem > 50 ? base : rem > 20 ? '#e5c07b' : '#ff5555')
-    const slotW = Math.max(6, Math.floor(cols / 9))
-    const three = cols >= 45
-    const colW = three ? Math.floor(cols / 3) : cols
+    const slotW = Math.max(6, Math.floor(lw / 9))
+    const three = !theater && cols >= 45
+    const colW = theater ? RW : three ? Math.floor(cols / 3) : cols
     const segs = Math.max(6, colW - 4)
     // segmented, so it reads like a game gauge and not like a slab
     const seg = (n: number) => {
@@ -430,8 +437,12 @@ export const register: Register = on => {
         <Box flexDirection="column" width={colW} paddingRight={1}>
           <Text wrap="truncate-end"><Text bold color={base}>{tag}</Text><Text bold> {rem == null ? '--' : `sisa ${rem}%`}</Text></Text>
           <Text color={c} wrap="truncate-end">{seg(rem ?? 0)}</Text>
-          <Text wrap="truncate-end" color="#8a919e">{used == null ? '-' : `terpakai ${Math.round(used)}%`}</Text>
-          <Text dimColor wrap="truncate-end">{caption}</Text>
+          {theater ? (
+            <Text wrap="truncate-end" color="#8a919e">{caption} - {used == null ? '-' : `terpakai ${Math.round(used)}%`}</Text>
+          ) : (
+            <Text wrap="truncate-end" color="#8a919e">{used == null ? '-' : `terpakai ${Math.round(used)}%`}</Text>
+          )}
+          {theater ? null : <Text dimColor wrap="truncate-end">{caption}</Text>}
         </Box>
       )
     }
@@ -442,64 +453,97 @@ export const register: Register = on => {
         {value}
       </Box>
     )
-    const rule = <Text color="#3b4048">{'─'.repeat(cols)}</Text>
+    const rule = <Text color="#3b4048">{'─'.repeat(lw)}</Text>
+    const ruleR = <Text color="#3b4048">{'─'.repeat(RW)}</Text>
+
+    const bars = i && (
+      <Box flexDirection={three ? 'row' : 'column'} marginTop={1}>
+        {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}`)}
+        {stat('MP', '#5aa9ff', i.five, i.fiveIn != null ? `5 jam: ${i.fiveIn}m` : '5 jam')}
+        {stat('SP', '#ff9f43', i.seven, 'batas mingguan')}
+      </Box>
+    )
+    const stage = (
+      <Box flexDirection="column" marginTop={1}>
+        <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={Math.min(full, 54)}>
+          <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
+          {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
+          {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text> : null}
+          <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
+        </Box>
+        <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{'      ▼'}</Text>
+        <Box flexDirection="column" alignItems="flex-start">{sprite(renderScene(sceneW, shown), Text)}</Box>
+      </Box>
+    )
+    const gearEl = (
+      <Box flexDirection="row" flexWrap="wrap" justifyContent="center">
+        {GEAR.map(g => {
+          const n = gear.counts[g.key] ?? 0
+          const isActive = gear.active === g.key
+          const color = isActive ? '#f6c04b' : n > 0 ? '#e6e6e6' : '#4b5263'
+          return (
+            <Box key={g.key} flexDirection="column" alignItems="center" width={slotW}>
+              <Text backgroundColor={isActive ? '#5c4a1a' : '#2c313a'} color={color} bold>{` ${g.icon} `}</Text>
+              <Text color={color} bold={n > 0}>{n > 0 ? `${n}x` : '-'}</Text>
+              <Text color={color} wrap="truncate-end">{g.name}</Text>
+            </Box>
+          )
+        })}
+      </Box>
+    )
+    const sheet = i && (
+      <Box flexDirection="column" marginTop={1}>
+        {row('PLAYER', '#f6c04b', <Text wrap="truncate-end">{i.model}{i.effort ? ` (${i.effort})` : ''}</Text>)}
+        {row('ZONE', '#c678dd', <Text wrap="truncate-end">{hidZone ? '******' : i.dir}</Text>)}
+        {i.email !== '' && row('GUILD', '#56b6c2', <Text dimColor wrap="truncate-end">{hid ? i.email.replace(/^[^@]*/, '******') : i.email}</Text>)}
+        {row('BRANCH', '#61afef', <Text wrap="truncate-end"><Text color="cyan">{i.branch || '-'}</Text><Text color="yellow"> {i.git}</Text><Text color="blue"> {i.sync}</Text></Text>)}
+        {i.commit !== '' && row('LOOT', '#e5c07b', <Text dimColor wrap="truncate-end">{i.commit}</Text>)}
+        <Box marginTop={1} flexDirection="row" gap={2}>
+          <Text><Text color="#98c379" bold>TIME </Text>{hhmm(i.minutes)}</Text>
+          <Text><Text color="#e5c07b" bold>GOLD </Text>{i.cost != null ? `$${i.cost.toFixed(2)}` : '-'}</Text>
+          <Text><Text color="#ff9f43" bold>XP </Text>{i.turns}</Text>
+        </Box>
+      </Box>
+    )
+
+    // theater: the stage on the left, all the gauges and the sheet in one column on the right
+    if (theater) {
+      return (
+        <Box flexDirection="column" width={full}>
+          <Text wrap="truncate-end"><Text color="#f6c04b" bold>MINYAM</Text></Text>
+          <Box flexDirection="row" gap={2}>
+            <Box flexDirection="column" width={lw}>
+              {stage}
+              {gearEl}
+              {rule}
+            </Box>
+            <Box flexDirection="column" width={RW}>
+              {bars}
+              <Box marginTop={1}>{ruleR}</Box>
+              {sheet}
+            </Box>
+          </Box>
+        </Box>
+      )
+    }
 
     return (
       <Box flexDirection="column" width={full}>
         <Text wrap="truncate-end">
           <Text color="#f6c04b" bold>MINYAM</Text>
         </Text>
-        {i && (
-          <Box flexDirection={three ? 'row' : 'column'} marginTop={1}>
-            {stat('HP', '#6bd66b', i.ctxWindow > 0 ? i.ctxPct : null, `konteks ${kb(i.ctxTokens)}/${kb(i.ctxWindow)}`)}
-            {stat('MP', '#5aa9ff', i.five, i.fiveIn != null ? `5 jam: ${i.fiveIn}m` : '5 jam')}
-            {stat('SP', '#ff9f43', i.seven, 'batas mingguan')}
-          </Box>
-        )}
+        {bars}
         <Box marginTop={1}>{rule}</Box>
-        <Box flexDirection="column" marginTop={1}>
-          <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={Math.min(full, 54)}>
-            <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
-            {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
-            {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text> : null}
-            <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
-          </Box>
-          <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{'      ▼'}</Text>
-          <Box flexDirection="column" alignItems="flex-start">{sprite(renderScene(sceneW, shown), Text)}</Box>
-        </Box>
-        <Box flexDirection="row" flexWrap="wrap" justifyContent="center">
-          {GEAR.map(g => {
-            const n = gear.counts[g.key] ?? 0
-            const isActive = gear.active === g.key
-            const color = isActive ? '#f6c04b' : n > 0 ? '#e6e6e6' : '#4b5263'
-            return (
-              <Box key={g.key} flexDirection="column" alignItems="center" width={slotW}>
-                <Text backgroundColor={isActive ? '#5c4a1a' : '#2c313a'} color={color} bold>{` ${g.icon} `}</Text>
-                <Text color={color} bold={n > 0}>{n > 0 ? `${n}x` : '-'}</Text>
-                <Text color={color} wrap="truncate-end">{g.name}</Text>
-              </Box>
-            )
-          })}
-        </Box>
+        {stage}
+        {gearEl}
         {rule}
-        {i && (
-          <Box flexDirection="column" marginTop={1}>
-            {row('PLAYER', '#f6c04b', <Text wrap="truncate-end">{i.model}{i.effort ? ` (${i.effort})` : ''}</Text>)}
-            {row('ZONE', '#c678dd', <Text wrap="truncate-end">{hidZone ? '******' : i.dir}</Text>)}
-            {i.email !== '' && row('GUILD', '#56b6c2', <Text dimColor wrap="truncate-end">{hid ? i.email.replace(/^[^@]*/, '******') : i.email}</Text>)}
-            {row('BRANCH', '#61afef', <Text wrap="truncate-end"><Text color="cyan">{i.branch || '-'}</Text><Text color="yellow"> {i.git}</Text><Text color="blue"> {i.sync}</Text></Text>)}
-            {i.commit !== '' && row('LOOT', '#e5c07b', <Text dimColor wrap="truncate-end">{i.commit}</Text>)}
-            <Box marginTop={1} flexDirection="row" gap={2}>
-              <Text><Text color="#98c379" bold>TIME </Text>{hhmm(i.minutes)}</Text>
-              <Text><Text color="#e5c07b" bold>GOLD </Text>{i.cost != null ? `$${i.cost.toFixed(2)}` : '-'}</Text>
-              <Text><Text color="#ff9f43" bold>XP </Text>{i.turns}</Text>
-            </Box>
+        {sheet}
+        {docked && rule}
+        {docked && (
+          <Box marginTop={1}>
+            <Client key="chat" module="./chat.tsx" width={full} props={{ w: full }} />
           </Box>
         )}
-        {rule}
-        <Box marginTop={1}>
-          <Client key="chat" module="./chat.tsx" width={full} props={{ w: full }} />
-        </Box>
       </Box>
     )
   })

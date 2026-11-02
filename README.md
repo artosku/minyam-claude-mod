@@ -42,13 +42,13 @@ Claude akan memasangnya sendiri. Setelah itu dia akan memberi tahu apa yang perl
 - Pastikan kamu sudah mengetik `/tui fullscreen`.
 - Lebarkan jendela terminal. Minyam butuh lebar sekitar 110 karakter. Kalau terlalu sempit, dia tidak muncul.
 - Tutup Claude Code, lalu buka lagi di folder yang sama.
-- Kalau muncul tapi terlalu lebar atau sempit, geser garis pemisah di tengah layar dengan mouse. Bar HP/MP/SP, tanah panggung, garis, dan kotak ketik ikut melebar saat panelnya kamu lebarkan, dan gelembung ucapan tetap selebar paling banyak 54 karakter.
+- Kalau muncul tapi terlalu lebar atau sempit, geser garis pemisah di tengah layar dengan mouse. Di tampilan biasa (`/tui default`) Minyam tampil sebagai blok tinggi selebar layar (mode teater). Bar HP/MP/SP, tanah panggung, garis, dan kotak ketik ikut melebar saat panelnya kamu lebarkan, dan gelembung ucapan tetap selebar paling banyak 54 karakter.
 
 Mau kembali ke tampilan biasa? Ketik `/tui default`.
 
 ## Apa saja yang kamu lihat
 
-- **Tiga bar di atas:** sisa tenaga, seperti di game.
+- **Tiga bar (di atas, atau di kanan pada mode teater yang lebar):** sisa tenaga, seperti di game. Di mode teater, panggung ada di kiri, bar HP/MP/SP dan lembar status ada di kanan, dan keterangan tiap bar jadi satu baris.
   - **HP** = sisa ruang percakapan (konteks).
   - **MP** = sisa jatah 5 jam.
   - **SP** = sisa jatah seminggu.
@@ -59,7 +59,7 @@ Mau kembali ke tampilan biasa? Ketik `/tui default`.
 - **Teman bantuan:** kalau Claude memanggil asisten (sub agent), muncul hewan kecil yang ikut menyerang. Haiku = burung hijau, Sonnet = burung hantu biru, Opus = naga ungu. Hewannya pergi saat asistennya selesai.
 - **Deretan alat:** menunjukkan alat apa saja yang dipakai Claude, misalnya `2x Bash`.
 - **Info sesi:** model yang dipakai, nama folder, akun, cabang git, lama sesi, biaya, dan jumlah pesan.
-- **Kotak ketik di bawah:** klik kotaknya, ketik pesan, lalu tekan Enter. Pesannya terkirim ke Claude seperti biasa. Perintah `/` yang kamu ketik di sini langsung dijalankan. Kalau ada perintah yang menolak dijalankan dari sini, teksnya dipindahkan ke kotak ketik utama dan kamu tinggal menekan Enter di sana. Melampirkan file (`@`) tetap lewat kotak utama.
+- **Kotak ketik di bawah (hanya di tampilan fullscreen, saat panel ada di samping):** di mode teater kotak ini tidak ada, ketik di kotak utama Claude Code. Klik kotaknya, ketik pesan, lalu tekan Enter. Pesannya terkirim ke Claude seperti biasa. Perintah `/` yang kamu ketik di sini langsung dijalankan. Kalau ada perintah yang menolak dijalankan dari sini, teksnya dipindahkan ke kotak ketik utama dan kamu tinggal menekan Enter di sana. Melampirkan file (`@`) tetap lewat kotak utama.
 
 ## Perintah
 
@@ -68,6 +68,7 @@ Ketik perintah ini di Claude Code:
 | Perintah | Gunanya |
 | --- | --- |
 | `/minyam` | Sembunyikan Minyam, atau munculkan lagi |
+| `/minyam kecil` | Ukuran panel lebih pendek (default-nya mode teater yang tinggi dan selebar layar) |
 | `/minyam hide-email` | Sembunyikan email kamu di layar (tampil `******@gmail.com`) |
 | `/minyam show-email` | Tampilkan email lagi |
 | `/minyam hide-folder` | Sembunyikan nama folder (tampil `******`) |
