@@ -17,12 +17,14 @@ Kalau ada langkah yang gagal, tampilkan pesan error-nya apa adanya dan jangan me
 Kamu tidak bisa mengetik slash command di terminal pengguna. Setelah langkah di atas, balas dengan poin-poin pendek seperti ini (sesuaikan bahasa pengguna):
 
 - Minyam sudah terpasang.
-- Ketik `/tui fullscreen` di prompt Claude Code. Panel samping hanya muncul di tampilan fullscreen.
-- Lebar terminal minimal sekitar 110 kolom. Kalau terlalu sempit, perbesar jendela terminalnya.
-- Kalau Minyam belum muncul, tutup Claude Code lalu buka lagi di folder yang sama.
+- Pakai tampilan biasa (mode teater): Minyam tampil sebagai blok besar di atas kotak ketik. Jangan suruh pengguna mengetik `/tui fullscreen`, karena mode teater tidak jalan di fullscreen. Kalau pengguna sedang di fullscreen, minta dia mengetik `/tui default`.
+- Lebar terminal minimal sekitar 80 kolom untuk layout dua kolom.
+- Kalau Minyam belum muncul, ketik `/minyam` dua kali, atau tutup Claude Code lalu buka lagi di folder yang sama.
+- Hanya kalau pengguna mau versi kecil di samping layar: `/tui fullscreen` (terminal sekitar 110 kolom), lalu `/minyam kecil`.
 - Perintah yang tersedia: `/minyam` (sembunyi atau muncul), `/minyam hide-email`, `/minyam show-email`, `/minyam hide-folder`, `/minyam show-folder`.
 - Suara (efek dan musik) menyala dari awal. Untuk mematikan: `/minyam sfx off` dan `/minyam musik off`. Untuk mengetes: `/minyam suara cek`. Windows dan Mac tidak perlu pasang apa pun. Di Linux perlu salah satu pemutar: `paplay` (`sudo apt install pulseaudio-utils`), `aplay` (`sudo apt install alsa-utils`), atau `ffplay` (`sudo apt install ffmpeg`).
-- Untuk kembali ke tampilan lama: `/tui default`.
+- Saat Minyam disembunyikan dengan `/minyam`, suara ikut berhenti dan menyala lagi saat dimunculkan.
+- Kembali ke teater dari fullscreen: `/tui default`, lalu `/minyam on`.
 
 ## Yang perlu kamu tahu soal privasi
 
@@ -47,9 +49,11 @@ Run yourself (Bash):
 Then answer with short bullet points, because you cannot type slash commands for the user:
 
 - Minyam is installed.
-- Type `/tui fullscreen` (the side panel only shows in fullscreen mode).
-- The terminal needs to be at least ~110 columns wide.
-- If Minyam does not show up, close Claude Code and open it again in the same folder.
+- Use the normal view (theater mode): Minyam is a big block above the prompt. Do NOT tell the user to type `/tui fullscreen`; theater mode does not work in fullscreen. If they are in fullscreen, tell them to type `/tui default`.
+- The terminal needs to be at least ~80 columns wide for the two-column layout.
+- If Minyam does not show up, type `/minyam` twice, or close Claude Code and open it again in the same folder.
+- Only for the small side view: `/tui fullscreen` (about 110 columns), then `/minyam kecil`.
 - Commands: `/minyam` (hide or show), `/minyam hide-email`, `/minyam show-email`, `/minyam hide-folder`, `/minyam show-folder`.
 - Sound (effects and music) is on by default. Turn it off with `/minyam sfx off` and `/minyam music off`; test with `/minyam suara cek`. Windows and macOS need nothing. On Linux install one player: `paplay` (`sudo apt install pulseaudio-utils`), `aplay` (`sudo apt install alsa-utils`) or `ffplay` (`sudo apt install ffmpeg`).
-- Back to the old view: `/tui default`.
+- Hiding Minyam with `/minyam` also stops sound; showing it brings it back.
+- Back to theater from fullscreen: `/tui default`, then `/minyam on`.

@@ -29,22 +29,26 @@ Claude akan memasangnya sendiri. Setelah itu dia akan memberi tahu apa yang perl
    claude plugin install minyam@artosku-mods
    ```
 
-2. Buka Claude Code, lalu ketik:
+2. Buka Claude Code. Pakai tampilan biasa, jangan ketik `/tui fullscreen`. Kalau sebelumnya kamu pernah menyalakan fullscreen, ketik `/tui default`.
 
-   ```
-   /tui fullscreen
-   ```
-
-3. Selesai. Minyam muncul di sisi kanan layar.
+3. Selesai. Minyam muncul sebagai blok besar selebar layar, tepat di atas kotak ketik (mode teater). Ini tampilan utamanya.
 
 ## Kalau Minyam belum muncul
 
-- Pastikan kamu sudah mengetik `/tui fullscreen`.
-- Lebarkan jendela terminal. Minyam butuh lebar sekitar 110 karakter. Kalau terlalu sempit, dia tidak muncul.
+- Pastikan kamu tidak sedang di fullscreen. Mode teater tidak jalan di `/tui fullscreen`. Ketik `/tui default`.
+- Lebarkan jendela terminal. Layout dua kolom (panggung di kiri, bar di kanan) butuh lebar sekitar 80 karakter ke atas.
+- Ketik `/minyam` dua kali (sembunyikan lalu munculkan lagi).
 - Tutup Claude Code, lalu buka lagi di folder yang sama.
-- Kalau muncul tapi terlalu lebar atau sempit, geser garis pemisah di tengah layar dengan mouse. Di tampilan biasa (`/tui default`) Minyam tampil sebagai blok tinggi selebar layar (mode teater). Bar HP/MP/SP, tanah panggung, garis, dan kotak ketik ikut melebar saat panelnya kamu lebarkan, dan gelembung ucapan tetap selebar paling banyak 54 karakter.
+- Di mode teater, Minyam tampil sebagai blok tinggi selebar layar. Tanah panggung dan bar mengikuti lebar jendela, dan gelembung ucapan tetap selebar paling banyak 54 karakter dengan tinggi yang selalu sama (4 baris).
 
-Mau kembali ke tampilan biasa? Ketik `/tui default`.
+### Mau versi kecil di samping layar?
+
+Mode teater adalah bawaannya. Kalau kamu lebih suka Minyam kecil yang menempel di sisi kanan layar:
+
+1. Ketik `/tui fullscreen` (terminal perlu selebar sekitar 110 karakter).
+2. Ketik `/minyam kecil`.
+
+Kembali ke teater: ketik `/tui default`, lalu `/minyam on`.
 
 ## Apa saja yang kamu lihat
 
@@ -67,7 +71,7 @@ Ketik perintah ini di Claude Code:
 
 | Perintah | Gunanya |
 | --- | --- |
-| `/minyam` | Sembunyikan Minyam, atau munculkan lagi |
+| `/minyam` | Sembunyikan Minyam, atau munculkan lagi. Saat disembunyikan, efek suara dan musik ikut berhenti, dan menyala lagi saat Minyam dimunculkan |
 | `/minyam kecil` | Ukuran panel lebih pendek (default-nya mode teater yang tinggi dan selebar layar) |
 | `/minyam hide-email` | Sembunyikan email kamu di layar (tampil `******@gmail.com`) |
 | `/minyam show-email` | Tampilkan email lagi |
@@ -113,7 +117,7 @@ Catatan: saat suara menyala, Minyam menjalankan program pemutar di komputermu (P
 
 1. Jalankan lewat Bash: `claude plugin marketplace add artosku/minyam-claude-mod`, lalu `claude plugin install minyam@artosku-mods`, lalu `claude plugin list` (harus ada `minyam`).
 2. Jangan membaca atau mengubah file lain milik pengguna.
-3. Kamu tidak bisa mengetik perintah `/` di terminal pengguna. Beri tahu pengguna, dalam poin-poin pendek: ketik `/tui fullscreen`, lebarkan terminal sampai sekitar 110 karakter, dan kalau Minyam belum muncul, tutup lalu buka lagi Claude Code.
+3. Kamu tidak bisa mengetik perintah `/` di terminal pengguna. Beri tahu pengguna, dalam poin-poin pendek: pakai tampilan biasa (jangan `/tui fullscreen`, karena mode teater tidak jalan di sana; kalau sedang fullscreen, ketik `/tui default`), dan kalau Minyam belum muncul, ketik `/minyam` dua kali atau tutup lalu buka lagi Claude Code. Fullscreen hanya untuk yang mau versi kecil lewat `/minyam kecil`.
 4. Rincian lengkap: [`SETUP_UNTUK_CLAUDE.md`](SETUP_UNTUK_CLAUDE.md).
 
 ## Untuk yang mau mengubah tampilan

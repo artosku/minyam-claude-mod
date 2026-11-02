@@ -114,12 +114,18 @@ async function tickAtom($: any, checkPets: boolean) {
     else if (s.flash && s.st === 'fight' && !s.fx) sound = s.pose === 'swing' ? (s.gh ? 'shot' : 'slash') : 'hit'
     return gone || moved ? JSON.stringify(s) : raw
   })
-  if (sound && (await read($, sfxOn))) void sfxPlay($, sound)
+  if (sound) void sfxIfOn($, sound)
 }
 
 // The tune is a child process; a reload of the module ends it, so it is started again when it is missing.
 async function ensureTune($: any) {
-  if ((await read($, musicOn)) && !tuneRunning()) await tuneStart($)
+  // a hidden Minyam is silent: no tune, no effects
+  if ((await read($, isShown)) && (await read($, musicOn)) && !tuneRunning()) await tuneStart($)
+}
+
+// An effect plays only when Minyam is shown and effects are on.
+async function sfxIfOn($: any, name: Parameters<typeof sfxPlay>[1]) {
+  if ((await read($, isShown)) && (await read($, sfxOn))) void sfxPlay($, name)
 }
 
 // A GitHub task: git push, pull, fetch, clone, merge, or the gh tool. Another monster, and Minyam shoots.
@@ -240,6 +246,22 @@ async function show($: any, tall = true) {
   await update($, isDocked, () => Boolean(opened.isPlaced))
 }
 
+// The speech bubble keeps one size: the text is wrapped into exactly two lines and cut with an ellipsis.
+function bubbleLines(text: string, w: number): string[] {
+  const words = text.replace(/\s+/g, ' ').trim().split(' ')
+  const lines: string[] = ['', '']
+  let k = 0
+  for (const word of words) {
+    const cand = lines[k] === '' ? word : lines[k] + ' ' + word
+    if (cand.length <= w) { lines[k] = cand; continue }
+    if (lines[k] !== '' && k === 0) { k = 1; lines[1] = word.length <= w ? word : word.slice(0, w - 1) + '…'; continue }
+    const base = lines[k] === '' ? word : lines[k]
+    lines[k] = base.slice(0, Math.max(0, w - 1)) + '…'
+    break
+  }
+  return lines
+}
+
 function sprite(cells: Cells, Text: any) {
   return cells.map((row, y) => (
     <Text key={y}>
@@ -322,9 +344,13 @@ export const register: Register = on => {
     if (next) {
       await show($, !small)
       await speak($, 'Aku di sini lagi.')
+      void ensureTune($)
     } else {
       await $.ui.close({ id: PANE })
       await update($, isDocked, () => false)
+      // hidden means silent; the choices for effects and music stay, so showing it again brings them back
+      await sfxStop()
+      await tuneStop()
     }
     return { text: next ? 'Minyam muncul.' : 'Minyam sembunyi. /minyam untuk memanggil lagi.' }
   })
@@ -334,7 +360,7 @@ export const register: Register = on => {
     if (res && res.agentId) {
       const kind = kindOf(res.model ?? (e as any).model)
       await mutateScene($, s => addPet(s, String(res.agentId), kind))
-      if (await read($, sfxOn)) void sfxPlay($, 'pet')
+      void sfxIfOn($, 'pet')
     }
     return res
   })
@@ -366,7 +392,7 @@ export const register: Register = on => {
   })
 
   on('turn.complete', async ($, e, next) => {
-    if (await read($, sfxOn)) void sfxPlay($, 'done')
+    void sfxIfOn($, 'done')
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     let ctx = ''
     try {
@@ -484,11 +510,14 @@ export const register: Register = on => {
     )
     const stage = (
       <Box flexDirection="column" marginTop={1}>
-        <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={Math.min(full, 54)}>
-          <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
-          {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
-          {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text> : null}
-          <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
+        <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={Math.min(full, 54)} height={6}>
+          <Text wrap="truncate-end" color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
+          {shown.st === 'fight'
+            ? <Text color="#ff9d5c" wrap="truncate-end">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text>
+            : (shown.pets ?? []).length > 0
+              ? <Text color="#7ee07e" wrap="truncate-end">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text>
+              : <Text> </Text>}
+          {bubbleLines(text === '' ? 'Nunggu perintah.' : text, Math.max(10, Math.min(full, 54) - 4)).map((l, k) => <Text key={k} wrap="truncate-end">{l === '' ? ' ' : l}</Text>)}
         </Box>
         <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{'      ▼'}</Text>
         <Box flexDirection="column" alignItems="flex-start">{sprite(renderScene(sceneW, shown), Text)}</Box>
