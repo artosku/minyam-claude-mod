@@ -71,12 +71,37 @@ Ketik perintah ini di Claude Code:
 | `/minyam show-email` | Tampilkan email lagi |
 | `/minyam hide-folder` | Sembunyikan nama folder (tampil `******`) |
 | `/minyam show-folder` | Tampilkan nama folder lagi |
+| `/minyam sfx on` / `/minyam sfx off` | Nyalakan atau matikan efek suara |
+| `/minyam musik on` / `/minyam musik off` | Nyalakan atau matikan musik petualangan |
+| `/minyam suara cek` | Bunyikan satu suara dan cek apakah komputermu bisa memutar suara |
 
 Mau screenshot layar? Jalankan `hide-email` dan `hide-folder` dulu supaya data pribadimu tidak ikut terlihat.
 
+## Suara (awalnya mati)
+
+Minyam punya efek suara (setiap tebasan, jurus, ultimate, monster kalah, hewan bantuan datang, tugas selesai) dan musik petualangan. **Dua-duanya mati** sampai kamu menyalakannya:
+
+```
+/minyam sfx on
+/minyam musik on
+```
+
+Suaranya diputar dengan pemutar yang sudah ada di komputermu. Setelah menyalakan, ketik `/minyam suara cek`. Kalau ada bunyi, berarti beres.
+
+| Komputer | Perlu dipasang? |
+| --- | --- |
+| **Windows** | Tidak. Memakai PowerShell bawaan. |
+| **Mac** | Tidak. Memakai `afplay` bawaan. |
+| **Linux** | Perlu satu pemutar. Pasang salah satu: `sudo apt install pulseaudio-utils`, atau `sudo apt install alsa-utils`, atau `sudo apt install ffmpeg`. Distro lain: pasang paket yang berisi `paplay`, `aplay`, atau `ffplay`. |
+
+Kalau `/minyam suara cek` bilang belum ada pemutar, ikuti petunjuk yang muncul di pesannya.
+
+Catatan: saat suara menyala, Minyam menjalankan program pemutar di komputermu (PowerShell di Windows). Di Windows, Minyam juga membuat satu file kecil di folder sementara (`minyam-sfx-...txt`) sebagai pemicu suara. Musik berjalan sebagai satu proses kecil di latar dan berhenti saat kamu mengetik `/minyam musik off`.
+
 ## Soal privasi
 
-- Minyam tidak memakai internet dan tidak menyimpan file apa pun.
+- Minyam tidak memakai internet.
+- Kalau kamu menyalakan suara, Minyam menjalankan pemutar suara bawaan komputermu untuk memutar file di folder `sounds`. Di Windows ada satu file pemicu kecil di folder sementara. Hanya itu.
 - Dia hanya membaca data dari komputermu sendiri: pengaturan Claude Code, email akun Claude (untuk ditampilkan di layar), dan info git di folder yang sedang kamu buka.
 - Pesan yang kamu ketik di kotak ketik Minyam dikirim ke Claude kamu, sama seperti pesan biasa.
 
@@ -90,7 +115,7 @@ Mau screenshot layar? Jalankan `hide-email` dan `hide-folder` dulu supaya data p
 ## Untuk yang mau mengubah tampilan
 
 - Gambar Minyam, monster, dan hewan bantuan: `hooks/scene.ts`.
-- Kotak ketik: `hooks/chat.tsx`.
+- Kotak ketik: `hooks/chat.tsx`. Suara: `hooks/sound.ts` dan folder `sounds`.
 - Bar, warna, dan susunan panel: `hooks/register.tsx`.
 
 ## Tentang Artosku

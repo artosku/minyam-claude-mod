@@ -6,10 +6,14 @@ import type { PetKind } from './scene'
 import type { Scene } from './scene'
 import type { Cells } from './scene'
 import { SPRITE } from './sprite'
+import { sfxPlay, sfxStop, soundHelp, tuneStart, tuneStop, tuneRunning } from './sound'
+import type { Sfx } from './sound'
 
 const PANE = 'minyam'
 const hideEmail = atom({ plugin: 'minyam', key: 'hideEmail' } as const, false)
 const hideZone = atom({ plugin: 'minyam', key: 'hideZone' } as const, false)
+const sfxOn = atom({ plugin: 'minyam', key: 'sfxOn' } as const, false)
+const musicOn = atom({ plugin: 'minyam', key: 'musicOn' } as const, false)
 const isShown = atom({ plugin: 'minyam', key: 'isShown' } as const, true)
 const say = atom({ plugin: 'minyam', key: 'say' } as const, 'Halo, aku Minyam. Aku jaga status di sini.')
 const isDocked = atom({ plugin: 'minyam', key: 'isDocked' } as const, false)
@@ -86,6 +90,7 @@ async function mutateScene($: any, fn: (s: Scene) => void) {
 }
 async function tickAtom($: any, checkPets: boolean) {
   const isWork = await read($, working)
+  let sound: Sfx | null = null
   let live: Set<string> | null = null
   if (checkPets) {
     try {
@@ -96,12 +101,23 @@ async function tickAtom($: any, checkPets: boolean) {
   await update($, sceneAtom, raw => {
     const s = parseScene(raw)
     const hadPets = s.pets.length > 0
+    const stBefore = s.st
     const gone = live ? syncPets(s, live) : false
     // the fight goes on while a sub agent still works, even when the main loop is idle
     if (hadPets && s.pets.length === 0 && !isWork && s.ex != null && s.pending === 0) s.pending = 1
     const moved = tickScene(s, isWork || s.pets.length > 0, 54)
+    sound = null
+    if (s.fx && s.fx.t === 0) sound = s.fx.name === 'ulti' ? 'ultimate' : s.fx.name
+    else if (s.st === 'die' && stBefore !== 'die') sound = 'defeat'
+    else if (s.flash && s.st === 'fight' && !s.fx) sound = s.pose === 'swing' ? 'slash' : 'hit'
     return gone || moved ? JSON.stringify(s) : raw
   })
+  if (sound && (await read($, sfxOn))) void sfxPlay($, sound)
+}
+
+// The tune is a child process; a reload of the module ends it, so it is started again when it is missing.
+async function ensureTune($: any) {
+  if ((await read($, musicOn)) && !tuneRunning()) await tuneStart($)
 }
 
 // A sub agent starts: its pet appears by the model it runs on.
@@ -219,12 +235,13 @@ export const register: Register = on => {
     await $.command.register({
       name: 'minyam',
       description: 'Show or hide Minyam, the chicken that tells the status',
-      argumentHint: 'on | off | hide-email | show-email | hide-folder | show-folder',
+      argumentHint: 'on | off | sfx on|off | musik on|off | hide-email | show-email | hide-folder | show-folder',
     })
     if (await read($, isShown)) void show($)
+    void ensureTune($)
     void gather($)
     // minutes, limits and git move by themselves
-    $.clock.every(60000, () => { void gather($) })
+    $.clock.every(60000, () => { void gather($); void ensureTune($) })
     $.clock.every(220, () => { beat += 1; void tickAtom($, beat % 5 === 0) })
     return next(e)
   })
@@ -236,6 +253,28 @@ export const register: Register = on => {
       const nextHide = arg === 'hide-email'
       await update($, hideEmail, () => nextHide)
       return { text: nextHide ? 'Email disembunyikan (depan jadi ******).' : 'Email ditampilkan lagi.' }
+    }
+    const [what, val] = arg.split(/\s+/)
+    if (what === 'sfx' || what === 'musik' || what === 'music' || what === 'suara') {
+      if (what === 'suara' && val === 'cek') {
+        void sfxPlay($, 'defeat')
+        return { text: await soundHelp($) }
+      }
+      const turnOn = val === 'on'
+      if (val !== 'on' && val !== 'off') return { text: 'Pakai: /minyam sfx on|off, /minyam musik on|off, atau /minyam suara cek.' }
+      if (what === 'sfx') {
+        await update($, sfxOn, () => turnOn)
+        if (turnOn) void sfxPlay($, 'done')
+        if (!turnOn) await sfxStop()
+        return { text: turnOn ? `Efek suara menyala. ${await soundHelp($)}` : 'Efek suara mati.' }
+      }
+      await update($, musicOn, () => turnOn)
+      if (turnOn) {
+        const ok = await tuneStart($)
+        return { text: ok ? `Musik menyala. ${await soundHelp($)}` : `Musik belum bisa diputar. ${await soundHelp($)}` }
+      }
+      await tuneStop()
+      return { text: 'Musik mati.' }
     }
     if (arg === 'hide-folder' || arg === 'show-folder') {
       const nextHide = arg === 'hide-folder'
@@ -259,6 +298,7 @@ export const register: Register = on => {
     if (res && res.agentId) {
       const kind = kindOf(res.model ?? (e as any).model)
       await mutateScene($, s => addPet(s, String(res.agentId), kind))
+      if (await read($, sfxOn)) void sfxPlay($, 'pet')
     }
     return res
   })
@@ -283,12 +323,13 @@ export const register: Register = on => {
     })
     const ran = await next(e)
     await update($, gearAtom, raw => JSON.stringify({ ...readGear(raw), active: '' }))
-    await mutateScene($, s => { s.pending += 1 }) // a task is done: the enemy in front of Minyam falls
+    await mutateScene($, s => { s.pending = Math.min(2, s.pending + 1) }) // a task is done: the enemy in front of Minyam falls
     await speak($, 'Selesai satu langkah, mikir lagi...')
     return ran
   })
 
   on('turn.complete', async ($, e, next) => {
+    if (await read($, sfxOn)) void sfxPlay($, 'done')
     const seconds = Math.round(((await $.clock.now()) - startedAt) / 1000)
     let ctx = ''
     try {
@@ -297,7 +338,7 @@ export const register: Register = on => {
     } catch {}
     await update($, last, () => `Giliran terakhir: ${seconds} dtk · ${tools} alat${ctx}`)
     await speak($, `Selesai ${seconds} dtk · ${tools} alat${ctx}. Nunggu perintah.`)
-    await mutateScene($, s => { if (s.ex != null && s.pending === 0) s.pending = 1 })
+    await mutateScene($, s => { s.pending = s.ex != null ? 1 : 0 }) // the turn is over: only the enemy in front still falls, no backlog of kills
     await update($, working, () => false)
     await gather($)
     return next(e)
