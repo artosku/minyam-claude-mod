@@ -149,7 +149,7 @@ export function tickScene(sc: Scene, working: boolean, w: number): boolean {
     case 'walk':
       sc.scroll += 1
       if (sc.ex == null) spawn()
-      else sc.ex -= 2
+      else sc.ex -= 2 + Math.max(0, Math.floor((w - 54) / 40)) // a wider stage is crossed faster
       if ((sc.ex ?? 0) <= fightX(w)) { sc.ex = fightX(w); sc.st = 'fight'; sc.t = 0; sc.ft = 0 }
       break
     case 'fight': {

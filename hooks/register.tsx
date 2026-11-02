@@ -14,6 +14,7 @@ const hideEmail = atom({ plugin: 'minyam', key: 'hideEmail' } as const, false)
 const hideZone = atom({ plugin: 'minyam', key: 'hideZone' } as const, false)
 const sfxOn = atom({ plugin: 'minyam', key: 'sfxOn' } as const, true)
 const musicOn = atom({ plugin: 'minyam', key: 'musicOn' } as const, true)
+const stageW = atom({ plugin: 'minyam', key: 'stageW' } as const, 54)
 const isShown = atom({ plugin: 'minyam', key: 'isShown' } as const, true)
 const say = atom({ plugin: 'minyam', key: 'say' } as const, 'Halo, aku Minyam. Aku jaga status di sini.')
 const isDocked = atom({ plugin: 'minyam', key: 'isDocked' } as const, false)
@@ -90,6 +91,7 @@ async function mutateScene($: any, fn: (s: Scene) => void) {
 }
 async function tickAtom($: any, checkPets: boolean) {
   const isWork = await read($, working)
+  const wide = await read($, stageW)
   let sound: Sfx | null = null
   let live: Set<string> | null = null
   if (checkPets) {
@@ -105,7 +107,7 @@ async function tickAtom($: any, checkPets: boolean) {
     const gone = live ? syncPets(s, live) : false
     // the fight goes on while a sub agent still works, even when the main loop is idle
     if (hadPets && s.pets.length === 0 && !isWork && s.ex != null && s.pending === 0) s.pending = 1
-    const moved = tickScene(s, isWork || s.pets.length > 0, 54)
+    const moved = tickScene(s, isWork || s.pets.length > 0, wide)
     sound = null
     if (s.fx && s.fx.t === 0) sound = s.fx.name === 'ulti' ? 'ultimate' : s.fx.name
     else if (s.st === 'die' && stBefore !== 'die') sound = 'defeat'
@@ -376,9 +378,12 @@ export const register: Register = on => {
     const { Box, Text, Client } = $.ui.resolve(e)
     const props = e.props as any
     // the content keeps to 54 columns however wide the pane is
-    const cols: number = Math.min(props.bodyColumns ?? 40, 54)
+    // as wide as the canvas when it is widened; the usual 54 at the default width
+    const have: number = props.bodyColumns ?? 40
+    const cols: number = have > 60 ? Math.min(have, 140) : Math.min(have, 54)
     const rows = props.placement === 'inline' ? (props.scroll?.bodyRows ?? 20) + 4 : (e.viewport?.rows ?? 40)
-    sceneW = Math.max(32, Math.min(cols, 54))
+    sceneW = Math.max(32, cols)
+    if ((await read($, stageW)) !== sceneW) void update($, stageW, () => sceneW)
     const sceneRaw = await read($, sceneAtom)
     const shown: Scene = parseScene(sceneRaw)
     const text = await read($, say)
@@ -453,7 +458,7 @@ export const register: Register = on => {
         )}
         <Box marginTop={1}>{rule}</Box>
         <Box flexDirection="column" marginTop={1}>
-          <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={full}>
+          <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={Math.min(full, 54)}>
             <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text>{shown.gh ? <Text color="#a58bd6" bold>  MODE GITHUB</Text> : null}</Text>
             {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
             {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft), shown.gh)} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx, shown.gh) : ''}</Text> : null}

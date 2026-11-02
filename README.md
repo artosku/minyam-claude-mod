@@ -42,7 +42,7 @@ Claude akan memasangnya sendiri. Setelah itu dia akan memberi tahu apa yang perl
 - Pastikan kamu sudah mengetik `/tui fullscreen`.
 - Lebarkan jendela terminal. Minyam butuh lebar sekitar 110 karakter. Kalau terlalu sempit, dia tidak muncul.
 - Tutup Claude Code, lalu buka lagi di folder yang sama.
-- Kalau muncul tapi terlalu lebar atau sempit, geser garis pemisah di tengah layar dengan mouse.
+- Kalau muncul tapi terlalu lebar atau sempit, geser garis pemisah di tengah layar dengan mouse. Bar HP/MP/SP, tanah panggung, garis, dan kotak ketik ikut melebar saat panelnya kamu lebarkan, dan gelembung ucapan tetap selebar paling banyak 54 karakter.
 
 Mau kembali ke tampilan biasa? Ketik `/tui default`.
 
