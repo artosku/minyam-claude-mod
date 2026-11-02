@@ -22,6 +22,7 @@ export type Scene = {
   finishing: boolean // the last blow is on its way
   hp: number // 0..1, what the bar over the enemy shows
   pets: Pet[] // helpers that appear while a sub agent works
+  beres: boolean // the work is done and the last enemy fell: BERES stays on the stage until the next task
   gh: boolean // a GitHub task (push, pull, gh ...): other monster, and Minyam shoots
 }
 
@@ -30,7 +31,7 @@ export type Pet = { id: string; k: PetKind; t: number }
 
 export const newScene = (): Scene => ({
   st: 'idle', t: 0, ex: null, kills: 0, pending: 0, scroll: 0, step: 0,
-  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [], gh: false,
+  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [], gh: false, beres: false,
 })
 
 const PH = 26 // pixel rows: 13 cell rows
@@ -134,15 +135,16 @@ export function tickScene(sc: Scene, working: boolean, w: number): boolean {
   sc.step += 1
   sc.flash = false
   for (const p of sc.pets ?? []) p.t += 1
-  const spawn = () => { sc.ex = w - MON[0].w; sc.ft = 0; sc.combo = 0; sc.fx = null; sc.pose = 'stance'; sc.finishing = false; sc.hp = 1; sc.gh = false }
+  const spawn = () => { sc.ex = w - MON[0].w; sc.ft = 0; sc.combo = 0; sc.fx = null; sc.pose = 'stance'; sc.finishing = false; sc.hp = 1; sc.gh = false; sc.beres = false }
   const after = () => {
     sc.ex = null
     sc.t = 0
-    if (working || sc.pending > 0) { spawn(); sc.st = 'walk' } else sc.st = 'idle'
+    if (working || sc.pending > 0) { spawn(); sc.st = 'walk' } else { sc.st = 'idle'; sc.beres = true }
   }
   switch (sc.st) {
     case 'idle':
-      if (working) { spawn(); sc.st = 'walk' } else sc.step = 0
+      if (working) { spawn(); sc.st = 'walk' } else if (!sc.beres) sc.step = 0
+      else if (sc.step > 40) sc.step = 40 // BERES sparkles for a few seconds, then holds still
       break
     case 'walk':
       sc.scroll += 1
@@ -370,6 +372,42 @@ export function renderScene(w: number, sc: Scene): Cells {
   const ey = GROUND - m.h
   const hit = sc.flash && fighting
   const ulti = sc.fx?.name === 'ulti'
+
+  // BERES: the work is done, in big pixel letters on the stage
+  if (sc.beres && sc.st === 'idle') {
+    const word = 'BERES!'
+    const GL: Record<string, string[]> = {
+      B: ['11110', '10001', '10001', '11110', '10001', '10001', '11110'],
+      E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+      R: ['11110', '10001', '10001', '11110', '10100', '10010', '10001'],
+      S: ['01111', '10000', '10000', '01110', '00001', '00001', '11110'],
+      '!': ['1', '1', '1', '1', '1', '0', '1'],
+    }
+    const total = word.split('').reduce((n, ch) => n + GL[ch][0].length + 1, -1)
+    const x0 = Math.max(OX + 15, Math.min(w - total, 20))
+    const y0 = 5
+    const glow = sc.step % 8 < 4
+    let cx0 = x0
+    for (const ch of word) {
+      const g = GL[ch]
+      for (let j = 0; j < g.length; j++) {
+        for (let i = 0; i < g[j].length; i++) {
+          if (g[j][i] !== '1') continue
+          put(buf, cx0 + i + 1, y0 + j + 1, '#8a5a2b')
+        }
+      }
+      for (let j = 0; j < g.length; j++) {
+        for (let i = 0; i < g[j].length; i++) {
+          if (g[j][i] === '1') put(buf, cx0 + i, y0 + j, glow ? '#ffe14d' : '#ffd02e')
+        }
+      }
+      cx0 += g[0].length + 1
+    }
+    // sparkles around it
+    for (const [dx, dy, ph] of [[-2, -2, 0], [total + 1, 0, 2], [total / 2, -3, 4], [-3, 6, 6]] as const) {
+      if ((sc.step + ph) % 8 < 4) put(buf, Math.round(x0 + dx), y0 + dy, '#ffffff')
+    }
+  }
 
   // the enemy
   if (sc.ex != null) {

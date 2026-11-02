@@ -146,6 +146,25 @@ async function git($: any, cwd: string, args: string[]): Promise<string> {
   }
 }
 
+// Model and effort change in the middle of a turn, so they are read again every few seconds on their own.
+async function refreshPlayer($: any): Promise<void> {
+  let model = ''
+  let effort = ''
+  try { model = await $.session.model() } catch { return }
+  try {
+    const home: string = (await $.env.get('USERPROFILE')) ?? (await $.env.get('HOME')) ?? ''
+    const st = JSON.parse(await $.fs.read(`${home}/.claude/settings.json`))
+    const level = st.modelSettings?.[model]?.effortLevel ?? st.effortLevel ?? ''
+    effort = ({ low: 'low', medium: 'med', high: 'high', xhigh: 'max' } as any)[level] ?? ''
+  } catch {}
+  await update($, info, raw => {
+    if (!raw) return raw
+    const i = JSON.parse(raw)
+    if (i.model === model && i.effort === effort) return raw
+    return JSON.stringify({ ...i, model, effort })
+  })
+}
+
 // What statusline.js showed, gathered again: model, folder, account, git, session, context, limits.
 async function gather($: any): Promise<void> {
   const cwd: string = await $.session.cwd()
@@ -159,7 +178,9 @@ async function gather($: any): Promise<void> {
   try { out.turns = await $.session.turns() } catch {}
   try {
     const st = JSON.parse(await $.fs.read(`${home}/.claude/settings.json`))
-    const level = st.effortLevel ?? ''
+    // the active model's own effort wins over the top-level one, as /effort saves it there
+    const perModel = st.modelSettings?.[String(out.model)]?.effortLevel
+    const level = perModel ?? st.effortLevel ?? ''
     out.effort = ({ low: 'low', medium: 'med', high: 'high', xhigh: 'max' } as any)[level] ?? ''
   } catch {}
   try {
@@ -246,6 +267,7 @@ export const register: Register = on => {
     void gather($)
     // minutes, limits and git move by themselves
     $.clock.every(60000, () => { void gather($); void ensureTune($) })
+    $.clock.every(3000, () => { void refreshPlayer($) })
     $.clock.every(220, () => { beat += 1; void tickAtom($, beat % 5 === 0) })
     return next(e)
   })
