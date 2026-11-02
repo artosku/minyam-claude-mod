@@ -24,6 +24,7 @@ export type Scene = {
   pets: Pet[] // helpers that appear while a sub agent works
   beres: boolean // the work is done and the last enemy fell: BERES stays on the stage until the next task
   gh: boolean // a GitHub task (push, pull, gh ...): other monster, and Minyam shoots
+  mail?: { dir: 'out' | 'in'; t: number } | null // a letter: thrown out when a message is sent, dropped in when one arrives
 }
 
 export type PetKind = 'haiku' | 'sonnet' | 'opus'
@@ -31,7 +32,7 @@ export type Pet = { id: string; k: PetKind; t: number }
 
 export const newScene = (): Scene => ({
   st: 'idle', t: 0, ex: null, kills: 0, pending: 0, scroll: 0, step: 0,
-  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [], gh: false, beres: false,
+  ft: 0, combo: 0, pose: 'stance', fx: null, flash: false, finishing: false, hp: 1, pets: [], gh: false, beres: false, mail: null,
 })
 
 const PH = 26 // pixel rows: 13 cell rows
@@ -43,7 +44,7 @@ const PAL: Record<string, string> = {
   c: '#fff0c8', s: '#efd196', r: '#f0434f', p: '#ee4f9a', t: '#2fc9b8', y: '#f7a823',
   e: '#2d1b12', k: '#fba4b8', f: '#f59a1f',
   g: '#7ee07e', G: '#3fa84a', b: '#5aa0ff', B: '#2f66c8', w: '#ffffff',
-  u: '#a06bff', U: '#5c2fb5', o: '#ffd02e',
+  u: '#a06bff', U: '#5c2fb5', o: '#ffd02e', z: '#9aa5b5',
 }
 
 // The helpers: Haiku a small green bird, Sonnet a blue owl, Opus a purple-gold dragon.
@@ -135,6 +136,10 @@ export function tickScene(sc: Scene, working: boolean, w: number): boolean {
   sc.step += 1
   sc.flash = false
   for (const p of sc.pets ?? []) p.t += 1
+  if (sc.mail) {
+    sc.mail.t += 1
+    if (sc.mail.dir === 'out' ? OX + 3 + sc.mail.t * 3 >= w + 8 || sc.mail.t > 60 : sc.mail.t >= 36) sc.mail = null
+  }
   const spawn = () => { sc.ex = w - MON[0].w; sc.ft = 0; sc.combo = 0; sc.fx = null; sc.pose = 'stance'; sc.finishing = false; sc.hp = 1; sc.gh = false; sc.beres = false }
   const after = () => {
     sc.ex = null
@@ -406,6 +411,54 @@ export function renderScene(w: number, sc: Scene): Cells {
     // sparkles around it
     for (const [dx, dy, ph] of [[-2, -2, 0], [total + 1, 0, 2], [total / 2, -3, 4], [-3, 6, 6]] as const) {
       if ((sc.step + ph) % 8 < 4) put(buf, Math.round(x0 + dx), y0 + dy, '#ffffff')
+    }
+  }
+
+  // LAGI / DIEM: nothing is happening and no BERES is up, so the stage says so in green pixel letters
+  if (sc.st === 'idle' && !sc.beres && sc.ex == null && (sc.pets ?? []).length === 0) {
+    const GI: Record<string, string[]> = {
+      L: ['10000', '10000', '10000', '10000', '10000', '10000', '11111'],
+      A: ['01110', '10001', '10001', '11111', '10001', '10001', '10001'],
+      G: ['01111', '10000', '10000', '10011', '10001', '10001', '01111'],
+      I: ['11111', '00100', '00100', '00100', '00100', '00100', '11111'],
+      D: ['11110', '10001', '10001', '10001', '10001', '10001', '11110'],
+      E: ['11111', '10000', '10000', '11110', '10000', '10000', '11111'],
+      M: ['10001', '11011', '10101', '10101', '10001', '10001', '10001'],
+    }
+    const lines = ['LAGI', 'DIEM']
+    const wordW = (word: string) => word.split('').reduce((n, ch) => n + GI[ch][0].length + 1, -1)
+    const widest = Math.max(...lines.map(wordW))
+    const x0 = Math.max(OX + 15, Math.min(w - widest, 20))
+    lines.forEach((word, row) => {
+      let cx0 = x0
+      const y0 = 1 + row * 8
+      for (const ch of word) {
+        const g = GI[ch]
+        for (let j = 0; j < g.length; j++) for (let i = 0; i < g[j].length; i++) if (g[j][i] === '1') put(buf, cx0 + i + 1, y0 + j + 1, '#2f6b2f')
+        for (let j = 0; j < g.length; j++) for (let i = 0; i < g[j].length; i++) if (g[j][i] === '1') put(buf, cx0 + i, y0 + j, '#6bd66b')
+        cx0 += g[0].length + 1
+      }
+    })
+  }
+
+  // the letter, high above the fight so it never covers the enemy: thrown to the right when a message goes out, hovering over Minyam's head when one comes in
+  if (sc.mail) {
+    const ENV = ['zzzzzzzz', 'zzwwwwzz', 'zwzwwzwz', 'zwwrrwwz', 'zwwwwwwz', 'zzzzzzzz']
+    const t = sc.mail.t
+    let mx: number
+    let my: number
+    if (sc.mail.dir === 'out') {
+      mx = OX + 3 + t * 3
+      my = 3 - Math.round(3 * Math.sin(Math.min(1, t / 12) * Math.PI))
+    } else {
+      mx = OX + 3
+      my = Math.min(1, -6 + t * 2) + (t >= 8 ? (sc.step % 6 < 3 ? 0 : 1) : 0)
+    }
+    sprite(buf, sc.mail.dir === 'in' ? ENV.map(r => r.replace(/z/g, 'o')) : ENV, mx, my)
+    if (sc.mail.dir === 'in' && t >= 10 && sc.step % 4 < 2) {
+      put(buf, mx - 2, my - 1, '#ffffff')
+      put(buf, mx + 9, my + 1, '#ffe14d')
+      put(buf, mx + 4, my - 3, '#ffffff')
     }
   }
 

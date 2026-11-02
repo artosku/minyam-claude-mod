@@ -8,7 +8,7 @@ Dia menunjukkan Claude lagi ngapain, sisa jatah pemakaianmu, dan bertarung melaw
 
 ## Cara pasang
 
-Ada dua cara. Pilih satu.
+Ada dua cara. Pilih satu. Dua-duanya memasang Minyam **secara global** (untuk akunmu), jadi Minyam otomatis ada di semua proyek dan semua sesi Claude Code. Kamu tidak perlu memasangnya lagi per folder.
 
 ### Cara 1: minta Claude yang memasang (paling gampang)
 
@@ -61,6 +61,8 @@ Kembali ke teater: ketik `/tui default`, lalu `/minyam on`.
 - **Pertarungan:** saat Claude bekerja, Minyam berjalan, ketemu monster, lalu menebasnya. Makin lama Claude bekerja, makin besar monsternya dan makin banyak jurus Minyam. Satu monster kalah setiap satu tugas selesai. Setelah monster terakhir kalah, tulisan **BERES!** dari piksel besar muncul di panggung sampai tugas berikutnya dimulai.
 - **Mode GitHub:** kalau Claude menjalankan `git push`, `git pull`, `git fetch`, `git clone`, `git merge`, atau perintah `gh` (PR, issue, dan sebagainya), monsternya berganti jadi gurita yang bentuknya beda di tiap tahap (Anak Gurita yang imut, Gurita Kode berwarna biru dengan antena, Gurita Raksasa berduri dan bertaring, Kraken Merge merah dengan mahkota dan simbol merge) dan Minyam menembak dengan pistol, lengkap dengan suara tembakan. Setelah monster itu kalah, adegan kembali normal.
 - **Teman bantuan:** kalau Claude memanggil asisten (sub agent), muncul hewan kecil yang ikut menyerang. Haiku = burung hijau, Sonnet = burung hantu biru, Opus = naga ungu. Hewannya pergi saat asistennya selesai.
+- **Surat dari terminal lain:** kalau ada pesan masuk dari sesi Claude Code lain (lewat SendMessage), sebuah amplop jatuh di depan Minyam. Kalau Claude mengirim pesan ke terminal lain, Minyam melempar amplopnya ke kanan.
+- **Tulisan LAGI DIEM:** saat Minyam menganggur dan tulisan BERES tidak tampil, tulisan hijau dua baris "LAGI / DIEM" muncul di panggung.
 - **Deretan alat:** menunjukkan alat apa saja yang dipakai Claude, misalnya `2x Bash`.
 - **Info sesi:** model yang dipakai, nama folder, akun, cabang git, lama sesi, biaya, dan jumlah pesan.
 - **Kotak ketik di bawah (hanya di tampilan fullscreen, saat panel ada di samping):** di mode teater kotak ini tidak ada, ketik di kotak utama Claude Code. Klik kotaknya, ketik pesan, lalu tekan Enter. Pesannya terkirim ke Claude seperti biasa. Perintah `/` yang kamu ketik di sini langsung dijalankan. Kalau ada perintah yang menolak dijalankan dari sini, teksnya dipindahkan ke kotak ketik utama dan kamu tinggal menekan Enter di sana. Melampirkan file (`@`) tetap lewat kotak utama.

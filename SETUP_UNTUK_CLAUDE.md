@@ -7,7 +7,7 @@
 
 1. Cek Claude Code ada dan cukup baru: `claude --version`. Kalau perintah `claude plugin` tidak dikenal, beri tahu pengguna untuk memperbarui Claude Code, lalu berhenti.
 2. Tambah marketplace: `claude plugin marketplace add artosku/minyam-claude-mod`
-3. Pasang mod: `claude plugin install minyam@artosku-mods`
+3. Pasang mod: `claude plugin install minyam@artosku-mods --scope user`. Ini pemasangan global (bawaan): Minyam aktif di semua proyek pengguna. Jangan pasang per proyek.
 4. Cek hasilnya: `claude plugin list` harus memuat `minyam`.
 
 Kalau ada langkah yang gagal, tampilkan pesan error-nya apa adanya dan jangan mengarang perbaikan.
@@ -43,7 +43,7 @@ Run yourself (Bash):
 
 1. `claude --version` (if `claude plugin` is unknown, tell the user to update Claude Code and stop)
 2. `claude plugin marketplace add artosku/minyam-claude-mod`
-3. `claude plugin install minyam@artosku-mods`
+3. `claude plugin install minyam@artosku-mods --scope user` (global, the default: Minyam works in every project; do not install per project)
 4. `claude plugin list` must show `minyam`
 
 Then answer with short bullet points, because you cannot type slash commands for the user:

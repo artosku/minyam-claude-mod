@@ -375,7 +375,19 @@ export const register: Register = on => {
     return next(e)
   })
 
+  // A letter comes in from another Claude terminal: an envelope drops in front of Minyam.
+  on('session.receive', async ($, e, next) => {
+    const kind = String((e as any).origin?.kind ?? '')
+    if (kind === 'peer' || kind === 'peer-send-message' || kind === 'projects-relay') {
+      await mutateScene($, s => { s.mail = { dir: 'in', t: 0 } })
+      void sfxIfOn($, 'pet')
+    }
+    return next(e)
+  })
+
   on('tool.call', async ($, e, next) => {
+    // sending a message to another terminal: Minyam throws the envelope
+    if (e.tool === 'SendMessage' || e.tool === 'SendToProject' || e.tool === 'SendToProjectContext') await mutateScene($, s => { s.mail = { dir: 'out', t: 0 } })
     if (e.tool === 'Bash' && isGithubCommand(String((e as any).command ?? ''))) await mutateScene($, s => { s.gh = true })
     tools += 1
     await speak($, doing(e))
