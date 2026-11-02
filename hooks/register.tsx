@@ -1,17 +1,22 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
-import { BIG } from './big'
-import type { Cells } from './big'
+import { newScene, renderScene, tickScene, stageOf, monsterName, fxLabel, addPet, syncPets, petLabel } from './scene'
+import type { PetKind } from './scene'
+import type { Scene } from './scene'
+import type { Cells } from './scene'
 import { SPRITE } from './sprite'
 
 const PANE = 'minyam'
+const hideEmail = atom({ plugin: 'minyam', key: 'hideEmail' } as const, false)
+const hideZone = atom({ plugin: 'minyam', key: 'hideZone' } as const, false)
 const isShown = atom({ plugin: 'minyam', key: 'isShown' } as const, true)
 const say = atom({ plugin: 'minyam', key: 'say' } as const, 'Halo, aku Minyam. Aku jaga status di sini.')
 const isDocked = atom({ plugin: 'minyam', key: 'isDocked' } as const, false)
 const last = atom({ plugin: 'minyam', key: 'last' } as const, '')
 const info = atom({ plugin: 'minyam', key: 'info' } as const, '')
 const gearAtom = atom({ plugin: 'minyam', key: 'gear' } as const, '')
+const sceneAtom = atom({ plugin: 'minyam', key: 'scene' } as const, '')
 const working = atom({ plugin: 'minyam', key: 'working' } as const, false)
 
 // What Minyam says goes to the bubble and, while shown, to the status line.
@@ -66,6 +71,43 @@ function gearOf(tool: string): string {
 type Gear = { counts: Record<string, number>; active: string }
 const readGear = (raw: string): Gear => {
   try { return raw ? JSON.parse(raw) : { counts: {}, active: '' } } catch { return { counts: {}, active: '' } }
+}
+
+// The scene lives in an atom, so a reload of this module cannot strand it mid-fight.
+const parseScene = (raw: string): Scene => {
+  try { return raw ? { ...newScene(), ...JSON.parse(raw) } : newScene() } catch { return newScene() }
+}
+async function mutateScene($: any, fn: (s: Scene) => void) {
+  await update($, sceneAtom, raw => {
+    const s = parseScene(raw)
+    fn(s)
+    return JSON.stringify(s)
+  })
+}
+async function tickAtom($: any, checkPets: boolean) {
+  const isWork = await read($, working)
+  let live: Set<string> | null = null
+  if (checkPets) {
+    try {
+      const all = await $.agent.list()
+      live = new Set(all.filter((a: any) => a.status === 'running' || a.status === 'pending' || a.status === 'waiting').map((a: any) => String(a.id)))
+    } catch {}
+  }
+  await update($, sceneAtom, raw => {
+    const s = parseScene(raw)
+    const hadPets = s.pets.length > 0
+    const gone = live ? syncPets(s, live) : false
+    // the fight goes on while a sub agent still works, even when the main loop is idle
+    if (hadPets && s.pets.length === 0 && !isWork && s.ex != null && s.pending === 0) s.pending = 1
+    const moved = tickScene(s, isWork || s.pets.length > 0, 54)
+    return gone || moved ? JSON.stringify(s) : raw
+  })
+}
+
+// A sub agent starts: its pet appears by the model it runs on.
+const kindOf = (model: unknown): PetKind => {
+  const m = String(model ?? '').toLowerCase()
+  return m.includes('opus') ? 'opus' : m.includes('haiku') ? 'haiku' : 'sonnet'
 }
 
 type Info = {
@@ -143,8 +185,8 @@ async function gather($: any): Promise<void> {
 }
 
 // The side pane when the terminal docks one, else the small band above the prompt.
-async function show($: any, wide: boolean) {
-  const opened = await $.ui.open(wide ? { id: PANE, title: 'Minyam', columns: 80, rows: 28 } : { id: PANE, title: 'Minyam', rows: 28 })
+async function show($: any) {
+  const opened = await $.ui.open({ id: PANE, title: 'Minyam', columns: 54, rows: 28 })
   await update($, isDocked, () => Boolean(opened.isPlaced))
 }
 
@@ -169,34 +211,56 @@ function sprite(cells: Cells, Text: any) {
 export const register: Register = on => {
   let startedAt = 0
   let tools = 0
+  // the walking scene: one enemy for each task
+  let sceneW = 40
+  let beat = 0
 
   on('session.start', async ($, e, next) => {
     await $.command.register({
       name: 'minyam',
       description: 'Show or hide Minyam, the chicken that tells the status',
-      argumentHint: 'on | off | besar',
+      argumentHint: 'on | off | hide-email | show-email | hide-folder | show-folder',
     })
-    if (await read($, isShown)) void show($, false)
+    if (await read($, isShown)) void show($)
     void gather($)
     // minutes, limits and git move by themselves
     $.clock.every(60000, () => { void gather($) })
+    $.clock.every(220, () => { beat += 1; void tickAtom($, beat % 5 === 0) })
     return next(e)
   })
 
   on('command.run', { command: 'minyam' }, async ($, e) => {
     const arg = String((e as any).args ?? '').trim().toLowerCase()
     const now = await read($, isShown)
-    const wide = arg === 'besar' || arg === 'big'
-    const next = wide || arg === 'on' ? true : arg === 'off' ? false : !now
+    if (arg === 'hide-email' || arg === 'show-email') {
+      const nextHide = arg === 'hide-email'
+      await update($, hideEmail, () => nextHide)
+      return { text: nextHide ? 'Email disembunyikan (depan jadi ******).' : 'Email ditampilkan lagi.' }
+    }
+    if (arg === 'hide-folder' || arg === 'show-folder') {
+      const nextHide = arg === 'hide-folder'
+      await update($, hideZone, () => nextHide)
+      return { text: nextHide ? 'Nama folder disembunyikan.' : 'Nama folder ditampilkan lagi.' }
+    }
+    const next = arg === 'on' ? true : arg === 'off' ? false : !now
     await update($, isShown, () => next)
     if (next) {
-      await show($, wide)
+      await show($)
       await speak($, 'Aku di sini lagi.')
     } else {
       await $.ui.close({ id: PANE })
       await update($, isDocked, () => false)
     }
     return { text: next ? 'Minyam muncul.' : 'Minyam sembunyi. /minyam untuk memanggil lagi.' }
+  })
+
+  on('agent.spawn', async ($, e, next) => {
+    const res: any = await next(e)
+    if (res && res.agentId) {
+      const kind = kindOf(res.model ?? (e as any).model)
+      await mutateScene($, s => addPet(s, String(res.agentId), kind))
+    }
+    return res
   })
 
   on('prompt.submit', async ($, e, next) => {
@@ -219,6 +283,7 @@ export const register: Register = on => {
     })
     const ran = await next(e)
     await update($, gearAtom, raw => JSON.stringify({ ...readGear(raw), active: '' }))
+    await mutateScene($, s => { s.pending += 1 }) // a task is done: the enemy in front of Minyam falls
     await speak($, 'Selesai satu langkah, mikir lagi...')
     return ran
   })
@@ -232,6 +297,7 @@ export const register: Register = on => {
     } catch {}
     await update($, last, () => `Giliran terakhir: ${seconds} dtk · ${tools} alat${ctx}`)
     await speak($, `Selesai ${seconds} dtk · ${tools} alat${ctx}. Nunggu perintah.`)
+    await mutateScene($, s => { if (s.ex != null && s.pending === 0) s.pending = 1 })
     await update($, working, () => false)
     await gather($)
     return next(e)
@@ -239,15 +305,18 @@ export const register: Register = on => {
 
   // The big Minyam and, in tidy boxes, everything the status line used to say.
   on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
-    const { Box, Text } = $.ui.resolve(e)
+    const { Box, Text, Client } = $.ui.resolve(e)
     const props = e.props as any
-    const cols: number = props.bodyColumns ?? 40
+    // the content keeps to 54 columns however wide the pane is
+    const cols: number = Math.min(props.bodyColumns ?? 40, 54)
     const rows = props.placement === 'inline' ? (props.scroll?.bodyRows ?? 20) + 4 : (e.viewport?.rows ?? 40)
-    const side = cols >= 56 // wide enough for the bubble on the left of Minyam
-    const fits = BIG.filter(s => s.w <= (side ? cols - 30 : cols) && s.rows.length <= rows - 22)
-    const pick = fits.length > 0 ? fits[fits.length - 1] : BIG[0]
+    sceneW = Math.max(32, Math.min(cols, 54))
+    const sceneRaw = await read($, sceneAtom)
+    const shown: Scene = parseScene(sceneRaw)
     const text = await read($, say)
     const isWorking = await read($, working)
+    const hid = await read($, hideEmail)
+    const hidZone = await read($, hideZone)
     const raw = await read($, info)
     const gear = readGear(await read($, gearAtom))
     const i: Info | null = raw ? JSON.parse(raw) : null
@@ -270,7 +339,6 @@ export const register: Register = on => {
       </Box>
     )
 
-    const bubbleW = side ? Math.max(20, cols - pick.w - 3) : full - 2
     // a game bar: full is good, it empties as the figure is used up
     const tone = (rem: number, base: string) => (rem > 50 ? base : rem > 20 ? '#e5c07b' : '#ff5555')
     const slotW = Math.max(6, Math.floor(cols / 9))
@@ -286,9 +354,10 @@ export const register: Register = on => {
       const rem = used == null ? null : Math.max(0, Math.min(100, 100 - used))
       const c = rem == null ? '#5c6370' : tone(rem, base)
       return (
-        <Box flexDirection="column" width={colW} paddingRight={2}>
-          <Text wrap="truncate-end"><Text bold color={base}>{tag}</Text><Text bold> {rem == null ? '--' : `${rem}%`}</Text><Text dimColor>{used == null ? '' : ` pakai ${Math.round(used)}%`}</Text></Text>
+        <Box flexDirection="column" width={colW} paddingRight={1}>
+          <Text wrap="truncate-end"><Text bold color={base}>{tag}</Text><Text bold> {rem == null ? '--' : `sisa ${rem}%`}</Text></Text>
           <Text color={c} wrap="truncate-end">{seg(rem ?? 0)}</Text>
+          <Text wrap="truncate-end" color="#8a919e">{used == null ? '-' : `terpakai ${Math.round(used)}%`}</Text>
           <Text dimColor wrap="truncate-end">{caption}</Text>
         </Box>
       )
@@ -315,15 +384,15 @@ export const register: Register = on => {
           </Box>
         )}
         <Box marginTop={1}>{rule}</Box>
-        <Box flexDirection={side ? 'row' : 'column'} alignItems="center" justifyContent="center">
-          <Box flexDirection="row" alignItems="center">
-            <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={bubbleW}>
-              <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}</Text>
-              <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
-            </Box>
-            <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{side ? '▶' : ''}</Text>
+        <Box flexDirection="column" marginTop={1}>
+          <Box borderStyle="round" borderColor={isWorking ? '#e5c07b' : '#5c6370'} flexDirection="column" paddingX={1} width={full}>
+            <Text color={isWorking ? '#e5c07b' : '#6bd66b'} bold>{isWorking ? '● Lagi kerja' : '● Lagi diem'}  <Text dimColor>tumbang: {shown.kills}</Text></Text>
+            {(shown.pets ?? []).length > 0 ? <Text color="#7ee07e" wrap="truncate">+ {(shown.pets ?? []).map(p => petLabel(p.k)).join(', ')} membantu</Text> : null}
+            {shown.st === 'fight' ? <Text color="#ff9d5c" wrap="truncate">⚔ {monsterName(stageOf(shown.ft))} · COMBO x{shown.combo}{shown.fx ? ' · ' + fxLabel(shown.fx) : ''}</Text> : null}
+            <Text wrap="wrap">{text === '' ? 'Nunggu perintah.' : text}</Text>
           </Box>
-          <Box flexDirection="column">{sprite(pick.rows, Text)}</Box>
+          <Text color={isWorking ? '#e5c07b' : '#5c6370'}>{'      ▼'}</Text>
+          <Box flexDirection="column" alignItems="flex-start">{sprite(renderScene(sceneW, shown), Text)}</Box>
         </Box>
         <Box flexDirection="row" flexWrap="wrap" justifyContent="center">
           {GEAR.map(g => {
@@ -343,8 +412,8 @@ export const register: Register = on => {
         {i && (
           <Box flexDirection="column" marginTop={1}>
             {row('PLAYER', '#f6c04b', <Text wrap="truncate-end">{i.model}{i.effort ? ` (${i.effort})` : ''}</Text>)}
-            {row('ZONE', '#c678dd', <Text wrap="truncate-end">{i.dir}</Text>)}
-            {i.email !== '' && row('GUILD', '#56b6c2', <Text dimColor wrap="truncate-end">{i.email}</Text>)}
+            {row('ZONE', '#c678dd', <Text wrap="truncate-end">{hidZone ? '******' : i.dir}</Text>)}
+            {i.email !== '' && row('GUILD', '#56b6c2', <Text dimColor wrap="truncate-end">{hid ? i.email.replace(/^[^@]*/, '******') : i.email}</Text>)}
             {row('BRANCH', '#61afef', <Text wrap="truncate-end"><Text color="cyan">{i.branch || '-'}</Text><Text color="yellow"> {i.git}</Text><Text color="blue"> {i.sync}</Text></Text>)}
             {i.commit !== '' && row('LOOT', '#e5c07b', <Text dimColor wrap="truncate-end">{i.commit}</Text>)}
             <Box marginTop={1} flexDirection="row" gap={2}>
@@ -354,8 +423,26 @@ export const register: Register = on => {
             </Box>
           </Box>
         )}
+        {rule}
+        <Box marginTop={1}>
+          <Client key="chat" module="./chat.tsx" width={full} props={{ w: full }} />
+        </Box>
       </Box>
     )
+  })
+
+  // What is typed in the pane goes to the session as a prompt, like the one below.
+  on('ui.message', { requestId: PANE }, async ($, e, next) => {
+    const text = String((e.data as any)?.text ?? '').trim()
+    if (e.element === 'chat' && text !== '') {
+      startedAt = await $.clock.now()
+      tools = 0
+      await update($, working, () => true)
+      await update($, gearAtom, () => JSON.stringify({ counts: {}, active: '' }))
+      await speak($, 'Siap, aku kerjakan.')
+      void $.prompt.submit({ text })
+    }
+    return next(e)
   })
 
   // The bubble: on the left, with its tail toward Minyam on the right; without a dock the small Minyam comes with it.
