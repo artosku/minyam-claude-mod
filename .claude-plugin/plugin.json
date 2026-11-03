@@ -1,6 +1,6 @@
 {
   "name": "minyam",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Minyam, the Artosku chicken mascot, as a game-style HUD for Claude Code: HP/MP/SP bars for context and limits, a speech bubble for what Claude is doing, an equipment bar of tools used, and a status sheet.",
   "author": { "name": "Artosku" },
   "license": "MIT",
